@@ -1,3 +1,4 @@
 flask
-claudette
+claudette @ git+https://github.com/AnswerDotAI/claudette.git
 requests
+toolslm
