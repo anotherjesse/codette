@@ -1,4 +1,8 @@
-Attached is documentation and schema for the datasette api: {{ url }}
+Attached is documentation and schema for the datasette api: 
+
+<API>
+{{ url }}
+</API>
 
 <Documentation>
 {{ docs }}
@@ -8,5 +12,11 @@ Attached is documentation and schema for the datasette api: {{ url }}
 {{ schema }}
 </Schema>
 
-produce a single single html file with inline <script> to fetch from said api and display data that user requests
+{% if previous %}
+The previous generate page is:
+
+{{ previous }}
+
+{% endif %}Produce a single single html file with inline <script> to fetch from said api and display data that user requests:
+
 {{ query }}

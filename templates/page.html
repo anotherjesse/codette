@@ -1,21 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Page</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
-        pre { background-color: #f0f0f0; padding: 10px; overflow-x: auto; }
-        iframe { width: 100%; height: 600px; border: 1px solid #ccc; }
+        body,
+        html {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100%;
+        }
+
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: #f0f0f0;
+            padding: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            margin-top: 60px;
+            /* Adjust this value based on your header height */
+        }
     </style>
 </head>
+
 <body>
-    <form method='post' style="margin-bottom: 10px;">
-        <a href='/'>home</a>
-        <input type='text' name='query' value='{{ metadata.query }}' style="width: 80%; padding: 5px;" />
-        <input type='hidden' name='url' value='{{ metadata.url }}' />
-        <input type='submit' value='Regenerate' />
-    </form>
-    <iframe src="/pages/{{ filename }}.html"></iframe>
+    <header>
+        <form method='post'>
+            <a href='/'>home</a>
+            {% if metadata.base %}
+            <a href='/pages/{{ metadata.base }}'>parent</a>
+            {% endif %}
+            <input type='text' name='query' value='{{ metadata.query }}' style="width: 60%; padding: 5px;" />
+            <input type='hidden' name='url' value='{{ metadata.url }}' />
+            <input type='hidden' name='base' value='{{ uuid }}' />
+            <button type='submit' formaction='/'>Modify</button>
+            <button type='submit'>Regenerate</button>
+            <button type='submit' formaction='/delete/{{ uuid }}' formmethod='post'>Delete</button>
+        </form>
+    </header>
+    <iframe src="/pages/{{ uuid }}.html"></iframe>
 </body>
+
 </html>
