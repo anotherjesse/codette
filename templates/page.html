@@ -28,9 +28,31 @@
             height: 100%;
             border: none;
             margin-top: 60px;
-            /* Adjust this value based on your header height */
         }
     </style>
+    <script>
+        function handleSubmit(event, action) {
+            if (event.altKey || event.metaKey) {
+                event.preventDefault();
+                const form = event.target.closest('form');
+                const formData = new FormData(form);
+                const url = action || form.action;
+                const newTab = window.open(url, '_blank');
+                newTab.addEventListener('load', () => {
+                    newTab.document.body.innerHTML = '<form id="tempForm" method="post"></form>';
+                    const tempForm = newTab.document.getElementById('tempForm');
+                    for (let [key, value] of formData.entries()) {
+                        const input = newTab.document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = key;
+                        input.value = value;
+                        tempForm.appendChild(input);
+                    }
+                    tempForm.submit();
+                });
+            }
+        }
+    </script>
 </head>
 
 <body>
@@ -43,8 +65,8 @@
             <input type='text' name='query' value='{{ metadata.query }}' style="width: 60%; padding: 5px;" />
             <input type='hidden' name='url' value='{{ metadata.url }}' />
             <input type='hidden' name='base' value='{{ uuid }}' />
-            <button type='submit' formaction='/'>Modify</button>
-            <button type='submit'>Regenerate</button>
+            <button type='submit' formaction='/' onclick="handleSubmit(event, '/')">Modify</button>
+            <button type='submit' onclick="handleSubmit(event)">Regenerate</button>
             <button type='submit' formaction='/delete/{{ uuid }}' formmethod='post'>Delete</button>
         </form>
     </header>
