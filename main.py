@@ -60,6 +60,17 @@ def hello_world():
             ul {{ list-style-type: none; padding: 0; }}
             li {{ margin-bottom: 5px; }}
         </style>
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {{
+                const textarea = document.querySelector('textarea[name="query"]');
+                textarea.addEventListener('keydown', function(e) {{
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {{
+                        e.preventDefault();
+                        this.form.submit();
+                    }}
+                }});
+            }});
+        </script>
     </head>
     <body>
         <h1>Datasette Visualization Query</h1>
@@ -70,7 +81,7 @@ def hello_world():
         </form>
         <h2>Recent Visualizations</h2>
         <ul>
-            {"".join(f"<li><a href='/pages/{page.replace('.json', '.html')}'>{query}</a></li>" for page, query in zip(recent_pages, recent_queries))}
+            {"".join(f"<li><a href='/pages/{page.replace('.json', '')}'>{query}</a></li>" for page, query in zip(recent_pages, recent_queries))}
         </ul>
     </body>
     </html>
