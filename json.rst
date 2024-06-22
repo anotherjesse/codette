@@ -461,3 +461,73 @@ You can find this near the top of the source code of those pages, looking like t
 The JSON URL is also made available in a ``Link`` HTTP header for the page::
 
     Link: https://latest.datasette.io/fixtures/sortable.json; rel="alternate"; type="application/json+datasette"
+
+
+
+. _sql:
+
+Running SQL queries
+===================
+
+Datasette treats SQLite database files as read-only and immutable. This means it is not possible to execute INSERT or UPDATE statements using Datasette, which allows us to expose SELECT statements to the outside world without needing to worry about SQL injection attacks.
+
+
+Note that this interface is only available if the :ref:`permissions_execute_sql` permission is allowed. See :ref:`authentication_permissions_execute_sql`.
+
+Any Datasette SQL query is reflected in the URL of the page, allowing you to bookmark them, share them with others and navigate through previous queries using your browser back button.
+
+You can also retrieve the results of any query as JSON by adding ``.json`` to the base URL.
+
+.. _sql_parameters:
+
+Named parameters
+----------------
+
+Datasette has special support for SQLite named parameters. Consider a SQL query like this:
+
+.. code-block:: sql
+
+    select * from Street_Tree_List
+    where "PermitNotes" like :notes
+    and "qSpecies" = :species
+
+If you execute this query using the custom query editor, Datasette will extract the two named parameters and use them to construct form fields for you to provide values.
+
+You can also provide values for these fields by constructing a URL::
+
+    /mydatabase?sql=select...&species=44
+
+SQLite string escaping rules will be applied to values passed using named parameters - they will be wrapped in quotes and their content will be correctly escaped.
+
+Values from named parameters are treated as SQLite strings. If you need to perform numeric comparisons on them you should cast them to an integer or float first using ``cast(:name as integer)`` or ``cast(:name as real)``, for example:
+
+.. code-block:: sql
+
+    select * from Street_Tree_List
+    where latitude > cast(:min_latitude as real)
+    and latitude < cast(:max_latitude as real)
+
+Datasette disallows custom SQL queries containing the string PRAGMA (with a small number `of exceptions <https://github.com/simonw/datasette/issues/761>`__) as SQLite pragma statements can be used to change database settings at runtime. If you need to include the string "pragma" in a query you can do so safely using a named parameter.
+
+
+.. _pagination:
+
+Pagination
+----------
+
+Datasette's default table pagination is designed to be extremely efficient. SQL OFFSET/LIMIT pagination can have a significant performance penalty once you get into multiple thousands of rows, as each page still requires the database to scan through every preceding row to find the correct offset.
+
+When paginating through tables, Datasette instead orders the rows in the table by their primary key and performs a WHERE clause against the last seen primary key for the previous page. For example:
+
+.. code-block:: sql
+
+    select rowid, * from Tree_List where rowid > 200 order by rowid limit 101
+
+This represents page three for this particular table, with a page size of 100.
+
+Note that we request 101 items in the limit clause rather than 100. This allows us to detect if we are on the last page of the results: if the query returns less than 101 rows we know we have reached the end of the pagination set. Datasette will only return the first 100 rows - the 101st is used purely to detect if there should be another page.
+
+Since the where clause acts against the index on the primary key, the query is extremely fast even for records that are a long way into the overall pagination set.
+
+.. _cross_database_queries:
+
