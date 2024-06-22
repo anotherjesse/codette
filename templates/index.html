@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Datasette Visualization</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        textarea { width: 100%; height: 100px; margin-bottom: 10px; }
+        input[type="submit"] { padding: 10px; }
+        ul { list-style-type: none; padding: 0; }
+        li { margin-bottom: 5px; }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const textarea = document.querySelector('textarea[name="query"]');
+            textarea.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    this.form.submit();
+                }
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>Datasette Visualization Query</h1>
+    <form method='post'>
+        <textarea name='query' placeholder="Enter your query here...">visualize posts per month using the datasette api</textarea>
+        <br>
+        <select name="url">
+            {% for url in urls %}
+                <option value='{{ url }}'>{{ url }}</option>
+            {% endfor %}
+        </select>
+        <input type='submit' value='Generate Visualization'>
+    </form>
+    <h2>Recent Visualizations</h2>
+    <ul>
+        {% for i in range(recent_pages|length) %}
+            <li><a href='/pages/{{ recent_pages[i].replace('.json', '') }}'>{{ recent_queries[i] }}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

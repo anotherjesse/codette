@@ -1,4 +1,5 @@
-from flask import Flask, request, redirect, send_from_directory
+from jinja2 import Environment, FileSystemLoader
+from flask import Flask, request, redirect, send_from_directory, render_template
 import requests
 import json
 import threading
@@ -14,17 +15,17 @@ def get_schema(url):
     return requests.get(url).json()
 
 
-def write_to_uuid_file(uuid, content, mode='html'):
+def write_to_uuid_file(uuid, content, mode="html"):
     base_filename = f"pages/{uuid}"
-    if mode == 'html':
+    if mode == "html":
         filename = f"{base_filename}.html"
-    elif mode == 'json':
+    elif mode == "json":
         filename = f"{base_filename}.json"
     else:
         raise ValueError("Invalid mode. Use 'html' or 'json'.")
 
     with open(filename, "w") as f:
-        if mode == 'json':
+        if mode == "json":
             json.dump(content, f, indent=2)
         else:
             f.write(content)
@@ -33,72 +34,45 @@ def write_to_uuid_file(uuid, content, mode='html'):
 
 @app.route("/")
 def hello_world():
+    urls = [
+        "https://global-power-plants.datasettes.com/global-power-plants/global-power-plants",
+        "https://datasette.simonwillison.net/",
+    ]
     # Get list of recent pages
     pages_dir = "pages"
     recent_pages = []
     if os.path.exists(pages_dir):
         files = os.listdir(pages_dir)
-        json_files = [f for f in files if f.endswith('.json')]
-        json_files.sort(key=lambda x: os.path.getmtime(os.path.join(pages_dir, x)), reverse=True)
+        json_files = [f for f in files if f.endswith(".json")]
+        json_files.sort(
+            key=lambda x: os.path.getmtime(os.path.join(pages_dir, x)), reverse=True
+        )
         recent_pages = json_files[:5]  # Get 5 most recent pages
 
     # Read queries from JSON files
     recent_queries = []
     for json_file in recent_pages:
-        with open(os.path.join(pages_dir, json_file), 'r') as f:
+        with open(os.path.join(pages_dir, json_file), "r") as f:
             data = json.load(f)
-            recent_queries.append(data.get('query', 'Unknown query'))
+            recent_queries.append(data.get("query", "Unknown query"))
 
-    return f"""
-    <html>
-    <head>
-        <title>Datasette Visualization</title>
-        <style>
-            body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; }}
-            textarea {{ width: 100%; height: 100px; margin-bottom: 10px; }}
-            input[type="submit"] {{ padding: 10px; }}
-            ul {{ list-style-type: none; padding: 0; }}
-            li {{ margin-bottom: 5px; }}
-        </style>
-        <script>
-            document.addEventListener('DOMContentLoaded', function() {{
-                const textarea = document.querySelector('textarea[name="query"]');
-                textarea.addEventListener('keydown', function(e) {{
-                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {{
-                        e.preventDefault();
-                        this.form.submit();
-                    }}
-                }});
-            }});
-        </script>
-    </head>
-    <body>
-        <h1>Datasette Visualization Query</h1>
-        <form method='post'>
-            <textarea name='query' placeholder="Enter your query here...">visualize posts per month using the datasette api</textarea>
-            <br>
-            <input type='submit' value='Generate Visualization'>
-        </form>
-        <h2>Recent Visualizations</h2>
-        <ul>
-            {"".join(f"<li><a href='/pages/{page.replace('.json', '')}'>{query}</a></li>" for page, query in zip(recent_pages, recent_queries))}
-        </ul>
-    </body>
-    </html>
-    """
+    return render_template('index.html', urls=urls, recent_pages=recent_pages, recent_queries=recent_queries)
 
 
 @app.route("/", methods=["POST"])
 def post():
     query = request.form["query"]
+    url = request.form["url"]
+    uuid_str = str(uuid.uuid4())
+    generate(uuid_str, query, url)
+    return redirect(f"/pages/{uuid_str}")
 
+
+def generate(uuid_str, query, url):
     query_dir = f"pages/"
     os.makedirs(query_dir, exist_ok=True)
-    uuid_str = str(uuid.uuid4())
 
-    # Write initial JSON with query
-    initial_json = {"query": query}
-    write_to_uuid_file(uuid_str, initial_json, mode='json')
+    write_to_uuid_file(uuid_str, {"query": query, "url": url}, mode="json")
 
     write_to_uuid_file(
         uuid_str,
@@ -117,52 +91,59 @@ def post():
 """,
     )
 
-    threading.Thread(target=generate_content, args=(query, uuid_str)).start()
-
-    return redirect(f"/pages/{uuid_str}")
+    threading.Thread(target=generate_content, args=(query, uuid_str, url)).start()
 
 
-def generate_content(query, uuid_str):
-    url = "https://datasette.simonwillison.net/"
-    schema = get_schema(url)
-    docs = open("json.rst").read()
-    model = "claude-3-5-sonnet-20240620"
-    system_prompt = """You are an expert web developer, you are tasked with producing a single file that will be used to display data from a datasette api.  All of your code should be inline in the html file, but you can use CDNs to import packages if needed."""
-    prefill = """<html>"""
-    ctx = f"""Attached is documentation and schema for the datasette api: {url}
+def generate_content(query, uuid_str, url):
+    try:
+        schema = get_schema(url)
+        docs = open("json.rst").read()
+        model = "claude-3-5-sonnet-20240620"
+        system_prompt = open('templates/system.md').read()
+        prefill = """<html>"""
+        
+        env = Environment(loader=FileSystemLoader('templates'))
+        template = env.get_template('context.jinja2')
+        
+        # Render the template
+        ctx = template.render(
+            url=url,
+            docs=docs,
+            schema=json.dumps(schema, indent=2),
+            query=query
+        )
 
-<Documentation>
-{docs}
-</Documentation>
+        chat = Chat(model, sp=system_prompt)
+        r = chat(ctx, prefill=prefill)
 
-<Schema>
-{json.dumps(schema, indent=2)}
-</Schema>
+        html = parse(r)
+        print(html)
 
-produce a single single html file with inline <script> to fetch from said api and display data that user requests
-{query}
-"""
+        write_to_uuid_file(uuid_str, html)
 
-    chat = Chat(model, sp=system_prompt)
-    r = chat(ctx, prefill=prefill)
+        json_blob = {
+            "query": query,
+            "context": ctx,
+            "url": url,
+            "schema": schema,
+            "result": html,
+            "model": model,
+            "system_prompt": system_prompt,
+            "prefill": prefill,
+        }
 
-    html = parse(r)
-    print(html)
-
-    write_to_uuid_file(uuid_str, html)
-
-    json_blob = {
-        "query": query,
-        "context": ctx,
-        "url": url,
-        "schema": schema,
-        "result": html,
-        "model": model,
-        "system_prompt": system_prompt,
-        "prefill": prefill,
-    }
-
-    write_to_uuid_file(uuid_str, json_blob, mode='json')
+        write_to_uuid_file(uuid_str, json_blob, mode="json")
+    except Exception as e:
+        error_html = f"""
+        <html>
+        <body>
+            <h1>An error occurred</h1>
+            <p>{str(e)}</p>
+        </body>
+        </html>
+        """
+        write_to_uuid_file(uuid_str, error_html)
+        print(f"Error occurred: {str(e)}")
 
 
 @app.route("/pages/<path:filename>")
@@ -171,30 +152,21 @@ def serve_page(filename):
         return send_from_directory("pages", filename)
 
     try:
-        with open(os.path.join('pages', filename + ".json"), 'r') as f:
+        with open(os.path.join("pages", filename + ".json"), "r") as f:
             metadata = json.load(f)
-        
-        return f"""
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <title>Query Result</title>
-            <style>
-                body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; }}
-                pre {{ background-color: #f0f0f0; padding: 10px; overflow-x: auto; }}
-                iframe {{ width: 100%; height: 600px; border: 1px solid #ccc; }}
-            </style>
-        </head>
-        <body>
-            <h1><a href='/'>/</a> Query: {metadata['query']}</h1>
-            <iframe src="/pages/{filename}.html"></iframe>
-        </body>
-        </html>
-        """
+
+        return render_template('page.html', metadata=metadata, filename=filename)
     except FileNotFoundError:
         return "File not found", 404
-    
+
+
+@app.route("/pages/<path:uuid>", methods=["POST"])
+def regenerate(uuid):
+    query = request.form["query"]
+    url = request.form["url"]
+    generate(uuid, query, url)
+    return redirect(f"/pages/{uuid}")
+
 
 def parse(r):
     return r.content[0].text
