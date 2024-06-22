@@ -53,7 +53,8 @@ def serve_page(uuid):
 def regenerate(uuid):
     query = request.form["query"]
     url = request.form["url"]
-    generate(uuid, query, url)
+    metadata = data.read(uuid, "metadata")
+    generate(uuid, query, url, metadata.get("base"))
     return redirect(f"/pages/{uuid}")
 
 
