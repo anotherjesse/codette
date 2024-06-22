@@ -18,7 +18,7 @@ def hello_world():
     return render_template(
         "index.html",
         urls=urls,
-        recent=data.get_recent_pages(50),
+        recent=data.get_recent_pages(100),
     )
 
 

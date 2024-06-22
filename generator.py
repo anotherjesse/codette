@@ -16,30 +16,29 @@ def generate_content(query, uuid_str, url, base):
         schema = get_schema(url)
         docs = open("json.rst").read()
         model = "claude-3-5-sonnet-20240620"
-        system_prompt = open("templates/system.md").read()
         prefill = """<html>"""
 
-        previous = data.read(base, "html") or ""
 
         env = Environment(loader=FileSystemLoader("templates"))
         template = env.get_template("context.jinja2")
 
-        ctx = template.render(
+        system_prompt = template.render(
             url=url,
             docs=docs,
             schema=json.dumps(schema, indent=2),
-            query=query,
-            previous=previous,
         )
 
+        messages = list(load_previous(base, count=4))
+        messages.append(query)
+
         chat = Chat(model, sp=system_prompt)
-        r = chat(ctx, prefill=prefill)
+        r = chat(messages, prefill=prefill)
 
         html = parse(r)
 
         metadata = {
             "query": query,
-            "context": ctx,
+            "messages": messages,
             "url": url,
             "schema": schema,
             "result": html,
@@ -57,3 +56,20 @@ def generate_content(query, uuid_str, url, base):
 
 def parse(r):
     return r.content[0].text
+
+
+def load_previous(base, count=4):
+    messages = []
+    for i in range(count):
+        if not base:
+            break
+        metadata = data.read(base, "metadata")
+        html = data.read(base, "html")
+        messages.append({"user": metadata.get("query", ""), "assistant": html})
+        base = metadata.get("base", "")
+
+    messages.reverse()
+
+    for m in messages:
+        yield m["user"]
+        yield m["assistant"]
