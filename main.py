@@ -179,7 +179,7 @@ def serve_page(filename):
             </head>
             <body>
                 <h1><a href='/'>/</a> Query: {metadata['query']}</h1>
-                <iframe srcdoc="{content.replace('"', '&quot;')}"></iframe>
+                <iframe src="/raw/{filename}"></iframe>
             </body>
             </html>
             """
@@ -187,6 +187,10 @@ def serve_page(filename):
             return "File not found", 404
     else:
         return send_from_directory("pages", filename)
+    
+@app.route("/raw/<path:filename>")
+def serve_raw(filename):
+    return send_from_directory("pages", filename)
 
 
 def parse(r):
