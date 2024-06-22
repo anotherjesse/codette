@@ -108,7 +108,7 @@ def post():
 
     threading.Thread(target=generate_content, args=(query, uuid_str)).start()
 
-    return redirect(f"/pages/{uuid_str}.html")
+    return redirect(f"/pages/{uuid_str}")
 
 
 def generate_content(query, uuid_str):
@@ -138,7 +138,7 @@ produce a single single html file with inline <script> to fetch from said api an
     html = parse(r)
     print(html)
 
-    filename = write_to_uuid_file(uuid_str, html)
+    write_to_uuid_file(uuid_str, html)
 
     json_blob = {
         "query": query,
@@ -156,42 +156,34 @@ produce a single single html file with inline <script> to fetch from said api an
 
 @app.route("/pages/<path:filename>")
 def serve_page(filename):
-    if filename.endswith('.html'):
-        json_filename = filename.replace('.html', '.json')
-        try:
-            with open(os.path.join('pages', json_filename), 'r') as f:
-                metadata = json.load(f)
-            
-            with open(os.path.join('pages', filename), 'r') as f:
-                content = f.read()
-            
-            return f"""
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <title>Query Result</title>
-                <style>
-                    body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; }}
-                    pre {{ background-color: #f0f0f0; padding: 10px; overflow-x: auto; }}
-                    iframe {{ width: 100%; height: 600px; border: 1px solid #ccc; }}
-                </style>
-            </head>
-            <body>
-                <h1><a href='/'>/</a> Query: {metadata['query']}</h1>
-                <iframe src="/raw/{filename}"></iframe>
-            </body>
-            </html>
-            """
-        except FileNotFoundError:
-            return "File not found", 404
-    else:
+    if os.path.exists(f"pages/{filename}"):
         return send_from_directory("pages", filename)
-    
-@app.route("/raw/<path:filename>")
-def serve_raw(filename):
-    return send_from_directory("pages", filename)
 
+    try:
+        with open(os.path.join('pages', filename + ".json"), 'r') as f:
+            metadata = json.load(f)
+        
+        return f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>Query Result</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 0; padding: 20px; }}
+                pre {{ background-color: #f0f0f0; padding: 10px; overflow-x: auto; }}
+                iframe {{ width: 100%; height: 600px; border: 1px solid #ccc; }}
+            </style>
+        </head>
+        <body>
+            <h1><a href='/'>/</a> Query: {metadata['query']}</h1>
+            <iframe src="/pages/{filename}.html"></iframe>
+        </body>
+        </html>
+        """
+    except FileNotFoundError:
+        return "File not found", 404
+    
 
 def parse(r):
     return r.content[0].text
