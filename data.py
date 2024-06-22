@@ -3,6 +3,9 @@ import os
 
 
 def write(uuid, html=None, metadata=None):
+    if not os.path.exists("pages"):
+        os.makedirs("pages")
+
     base = f"pages/{uuid}"
     if html:
         filename = f"{base}.html"
@@ -22,13 +25,17 @@ def read(uuid, mode="html"):
     elif mode == "metadata":
         filename = f"{base}.json"
     else:
-        raise ValueError("Invalid mode. Use 'html' or 'json'.")
+        raise ValueError("Invalid mode. Use 'html', 'metadata', or 'raw'.")
 
     if not os.path.exists(filename):
         return None
     
     with open(filename, "r") as f:
-        return f.read()
+        content = f.read()
+        
+    if mode == "metadata":
+        return json.loads(content)
+    return content
 
 
 def delete(uuid):
