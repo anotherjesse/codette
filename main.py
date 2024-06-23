@@ -1,4 +1,4 @@
-from flask import Flask, request, redirect, render_template, jsonify
+from flask import Flask, request, redirect, render_template, jsonify, Response, abort
 import threading
 from uuid import uuid4
 import data
@@ -37,7 +37,10 @@ def serve_json(uuid):
 @app.route("/pages/<path:uuid>.html")
 def serve_html(uuid):
     content = data.read(uuid, "html")
-    return content, {"Content-Type": "text/html"}
+    if content:
+        return Response(content, mimetype="text/html")
+
+    abort(404)
 
 
 @app.route("/pages/<path:uuid>")
@@ -46,7 +49,7 @@ def serve_page(uuid):
     if metadata:
         return render_template("page.html", metadata=metadata, uuid=uuid)
 
-    return "File not found", 404
+    abort(404)
 
 
 @app.route("/pages/<path:uuid>", methods=["POST"])
