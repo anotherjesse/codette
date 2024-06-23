@@ -52,6 +52,22 @@
                 });
             }
         }
+
+        function updateFavicon() {
+            const iframe = document.querySelector('iframe');
+            const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
+            link.type = 'image/x-icon';
+            link.rel = 'shortcut icon';
+
+            if (iframe.contentDocument.title === 'Generating...') {
+                link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🔄</text></svg>';
+            } else if (iframe.contentDocument.title === 'error') {
+                link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="red"/></svg>';
+            } else {
+                link.href = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" fill="green"/></svg>';
+            }
+            document.head.appendChild(link);
+        }
     </script>
 </head>
 
@@ -70,7 +86,7 @@
             <button type='submit' formaction='/delete/{{ uuid }}' formmethod='post'>Delete</button>
         </form>
     </header>
-    <iframe src="/pages/{{ uuid }}.html"></iframe>
+    <iframe src="/pages/{{ uuid }}.html" onload="updateFavicon()"></iframe>
 </body>
 
 </html>

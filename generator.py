@@ -50,7 +50,7 @@ def generate_content(query, uuid_str, url, base):
 
         data.write(uuid_str, html=html, metadata=metadata)
     except Exception as e:
-        error_html = f"<p>{str(e)}</p><pre>{traceback.format_exc()}</pre>"
+        error_html = f"<title>error</title><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>"
         data.write(uuid_str, html=error_html)
 
 
