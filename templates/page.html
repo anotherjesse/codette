@@ -29,6 +29,52 @@
             border: none;
             margin-top: 60px;
         }
+
+        #toast {
+            display: none;
+            min-width: 250px;
+            background-color: #c98484;
+            color: #fff;
+            text-align: left;
+            padding: 8px;
+            position: fixed;
+            z-index: 1;
+            left: 8px;
+            bottom: 8px;
+            font-size: 14px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #toast.show {
+            display: block;
+        }
+
+        #toast-content {
+            margin-right: 10px;
+        }
+
+        button {
+            padding: 5px 10px;
+
+        }
+
+        .toast-button {
+            background-color: transparent;
+            border: 1px solid #ffffff63;
+            color: #fff;
+            background-color: #c24747;
+
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .dismiss {
+            background-color: #c2474755;
+        }
+
+        .toast-button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
     </style>
     <script>
         function handleSubmit(event, action) {
@@ -52,6 +98,27 @@
                 });
             }
         }
+
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            const toastContent = document.getElementById("toast-content");
+            toastContent.textContent = message;
+            toast.classList.add("show");
+        }
+
+        function closeToast() {
+            const toast = document.getElementById("toast");
+            toast.classList.remove("show");
+        }
+
+        function fixError() {
+            let formText = document.getElementById('form-text');
+            let toastContent = document.getElementById('toast-content');
+            let submitButton = document.getElementById('submit-button');
+            formText.value = "Fix this error: " + toastContent.textContent;
+            submitButton.click();
+            closeToast();
+        }
     </script>
 </head>
 
@@ -62,15 +129,27 @@
             {% if metadata.base %}
             <a href='/pages/{{ metadata.base }}'>parent</a>
             {% endif %}
-            <input type='text' name='query' value='{{ metadata.query }}' style="width: 60%; padding: 5px;" />
+            <input type='text' id="form-text" name='query' value='{{ metadata.query }}'
+                style="width: 60%; padding: 5px;" />
             <input type='hidden' name='url' value='{{ metadata.url }}' />
             <input type='hidden' name='base' value='{{ uuid }}' />
-            <button type='submit' formaction='/' onclick="handleSubmit(event, '/')">Modify</button>
+            <button id="submit-button" type='submit' formaction='/' onclick="handleSubmit(event, '/')">Modify</button>
             <button type='submit' onclick="handleSubmit(event)">Regenerate</button>
             <button type='submit' formaction='/delete/{{ uuid }}' formmethod='post'>Delete</button>
         </form>
     </header>
-    <iframe src="/pages/{{ uuid }}.html"></iframe>
+    <iframe id="content-frame" src="/pages/{{ uuid }}.html"></iframe>
+    <div id="toast">
+        <span id="toast-content"></span>
+        <button class="toast-button dismiss" onclick="closeToast()">Dismiss</button>
+        <button class="toast-button" onclick="fixError()">Fix Error</button>
+    </div>
+    <script>
+        let iframe = document.getElementById('content-frame');
+        iframe.contentWindow.addEventListener('error', function (event) {
+            showToast(event.message);
+        }, true);
+    </script>
 </body>
 
 </html>
