@@ -6,14 +6,14 @@ import data
 import traceback
 
 
-def get_schema(url):
+def get_datasette_schema(url):
     url += ".json"
     return requests.get(url).json()
 
 
 def generate_content(query, uuid_str, url, base):
     try:
-        schema = get_schema(url)
+        schema = get_datasette_schema(url)
         docs = open("json.rst").read()
         model = "claude-3-5-sonnet-20240620"
         prefill = """<html>"""

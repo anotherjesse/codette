@@ -8,6 +8,18 @@
 
 ## next steps
 
+1. be able to generate pages (for my js apps or datasette apps)
+
+a. and they work!
+b. and I can demo the process of using it / making a page
+
+- [ ] better ability to create and view variations
+- [ ] ability to add artifacts?
+- [ ] decouple datasette - make it an example usecase?
+- [ ] concept of projects?
+
+Misc:
+
 - [ ] magic variations of a prompt - as claude 3.5 seems to do roughly the same thing if you run multiple times...
 - [ ] suggestion based on the schema?
 - [ ] suggestion for changes based the current page
