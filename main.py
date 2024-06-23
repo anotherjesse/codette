@@ -1,6 +1,5 @@
-from flask import Flask, request, redirect, render_template
+from flask import Flask, request, redirect, render_template, jsonify
 import threading
-import os
 import uuid
 import data
 import generator
@@ -9,16 +8,22 @@ app = Flask(__name__)
 
 
 @app.route("/")
-def hello_world():
+def index():
     urls = [
         "https://datasette.simonwillison.net/",
         "https://global-power-plants.datasettes.com/global-power-plants/global-power-plants",
     ]
+    params = {
+        "urls": urls,
+        "recent": data.get_recent_pages(100),
+    }
+
+    if request.headers.get("Accept") == "application/json":
+        return jsonify(params)
 
     return render_template(
         "index.html",
-        urls=urls,
-        recent=data.get_recent_pages(100),
+        **params,
     )
 
 
@@ -36,10 +41,10 @@ def post():
 def serve_page(uuid):
     content = data.read(uuid, "raw")
     if content:
-        if uuid.endswith('.json'):
-            return content, {'Content-Type': 'application/json'}
-        elif uuid.endswith('.html'):
-            return content, {'Content-Type': 'text/html'}
+        if uuid.endswith(".json"):
+            return content, {"Content-Type": "application/json"}
+        elif uuid.endswith(".html"):
+            return content, {"Content-Type": "text/html"}
         return content
 
     metadata = data.read(uuid, "metadata")

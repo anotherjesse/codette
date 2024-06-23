@@ -15,3 +15,4 @@
 - [x] show status of page (generating, error, done) in favicon
 - [ ] better projects / linage / viewing history
 - [ ] change UI to be built in this - working against the api
+- [ ] show the in-progress generation? (or wait for htmx/liveview)
