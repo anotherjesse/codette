@@ -1,6 +1,11 @@
 import json
 import os
 
+urls = [
+    "https://datasette.simonwillison.net/",
+    "https://global-power-plants.datasettes.com/global-power-plants/global-power-plants",
+]
+
 
 def write(uuid, html=None, metadata=None):
     if not os.path.exists("pages"):
@@ -16,6 +21,7 @@ def write(uuid, html=None, metadata=None):
         with open(filename, "w") as f:
             json.dump(metadata, f, indent=2)
 
+
 def read(uuid, mode="html"):
     base = f"pages/{uuid}"
     if mode == "raw":
@@ -29,10 +35,10 @@ def read(uuid, mode="html"):
 
     if not os.path.exists(filename):
         return None
-    
+
     with open(filename, "r") as f:
         content = f.read()
-        
+
     if mode == "metadata":
         return json.loads(content)
     return content

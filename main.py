@@ -1,6 +1,6 @@
 from flask import Flask, request, redirect, render_template, jsonify
 import threading
-import uuid
+from uuid import uuid4
 import data
 import generator
 
@@ -9,22 +9,13 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-    urls = [
-        "https://datasette.simonwillison.net/",
-        "https://global-power-plants.datasettes.com/global-power-plants/global-power-plants",
-    ]
+    count = int(request.args.get("count", 25))
     params = {
-        "urls": urls,
-        "recent": data.get_recent_pages(100),
+        "urls": data.urls,
+        "recent": data.get_recent_pages(count),
     }
 
-    if request.headers.get("Accept") == "application/json":
-        return jsonify(params)
-
-    return render_template(
-        "index.html",
-        **params,
-    )
+    return render_template("index.html", **params)
 
 
 @app.route("/", methods=["POST"])
@@ -32,21 +23,25 @@ def post():
     query = request.form["query"]
     url = request.form["url"]
     base = request.form.get("base")
-    uuid_str = str(uuid.uuid4())
-    generate(uuid_str, query, url, base)
-    return redirect(f"/pages/{uuid_str}")
+    uuid = str(uuid4())
+    generate(uuid, query, url, base)
+    return redirect(f"/pages/{uuid}")
+
+
+@app.route("/pages/<path:uuid>.json")
+def serve_json(uuid):
+    metadata = data.read(uuid, "metadata")
+    return jsonify(metadata)
+
+
+@app.route("/pages/<path:uuid>.html")
+def serve_html(uuid):
+    content = data.read(uuid, "html")
+    return content, {"Content-Type": "text/html"}
 
 
 @app.route("/pages/<path:uuid>")
 def serve_page(uuid):
-    content = data.read(uuid, "raw")
-    if content:
-        if uuid.endswith(".json"):
-            return content, {"Content-Type": "application/json"}
-        elif uuid.endswith(".html"):
-            return content, {"Content-Type": "text/html"}
-        return content
-
     metadata = data.read(uuid, "metadata")
     if metadata:
         return render_template("page.html", metadata=metadata, uuid=uuid)
@@ -69,15 +64,15 @@ def delete(uuid):
     return redirect("/")
 
 
-def generate(uuid_str, query, url, base=None):
+def generate(uuid, query, url, base=None):
     data.write(
-        uuid_str,
+        uuid,
         html=open("templates/generating.html").read(),
         metadata={"query": query, "url": url, "base": base},
     )
 
     threading.Thread(
-        target=generator.generate_content, args=(query, uuid_str, url, base)
+        target=generator.generate_content, args=(query, uuid, url, base)
     ).start()
 
 
