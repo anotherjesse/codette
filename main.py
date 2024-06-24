@@ -4,9 +4,9 @@ import threading
 from uuid import uuid4
 import data
 import generator
+import prefix
 
 app = Flask(__name__)
-
 
 @app.route("/")
 def list_projects():
@@ -55,8 +55,9 @@ def project_post(project):
 @app.route("/<string:project>/page/<string:page>", methods=["POST"])
 def project_page_post(project, page):
     query = request.form["query"]
+    if request.form.get("prefix"):
+        query = prefix.get_prefix() + " " + query
     uuid = str(uuid4())
-    url = "https://datasette.simonwillison.net/"
     base = request.form.get("base")
 
     data.write(
@@ -64,7 +65,13 @@ def project_page_post(project, page):
         uuid,
         kind="generation",
         html=open("templates/generating.html").read(),
-        metadata=dict(query=query, page=page, base=base, url=url, uuid=uuid, created=datetime.now().isoformat()),
+        metadata=dict(
+            query=query,
+            page=page,
+            base=base,
+            uuid=uuid,
+            created=datetime.now().isoformat(),
+        ),
     )
 
     data.update(project, page, kind="page", metadata={"generation": uuid})
@@ -94,7 +101,14 @@ def serve_page(project, page):
     metadata = data.read(project, page, kind="page", mode="metadata")
     if metadata:
         generations = data.page_generations(project, page)
-        return render_template("page.html", metadata=metadata, page=page, selected_generation=metadata.get("generation"), project=project, generations=generations)
+        return render_template(
+            "page.html",
+            metadata=metadata,
+            page=page,
+            selected_generation=metadata.get("generation"),
+            project=project,
+            generations=generations,
+        )
 
     abort(404)
 
@@ -104,7 +118,13 @@ def serve_history(project, page):
     metadata = data.read(project, page, kind="page", mode="metadata")
     generations = data.page_generations(project, page)
     if generations:
-        return render_template("history.html", generations=generations, project=project, metadata=metadata, page=page)
+        return render_template(
+            "history.html",
+            generations=generations,
+            project=project,
+            metadata=metadata,
+            page=page,
+        )
 
     abort(404)
 
@@ -114,9 +134,17 @@ def serve_generation(project, page, generation):
     metadata = data.read(project, generation, kind="generation", mode="metadata")
     if metadata:
         generations = data.page_generations(project, page)
-        return render_template("page.html", metadata=metadata, page=page, selected_generation=generation, project=project, generations=generations)
+        return render_template(
+            "page.html",
+            metadata=metadata,
+            page=page,
+            selected_generation=generation,
+            project=project,
+            generations=generations,
+        )
 
     abort(404)
+
 
 @app.route("/<string:project>/page/<string:page>/<string:generation>.html")
 def serve_generation_html(project, page, generation):
@@ -126,10 +154,12 @@ def serve_generation_html(project, page, generation):
 
     abort(404)
 
+
 @app.route("/<string:project>/page/<string:page>/<string:generation>.json")
 def serve_generation_json(project, page, generation):
     metadata = data.read(project, generation, kind="generation", mode="metadata")
     return jsonify(metadata)
+
 
 @app.route("/pages/<string:uuid>", methods=["POST"])
 def regenerate(uuid):
