@@ -8,51 +8,114 @@ app = Flask(__name__)
 
 
 @app.route("/")
-def index():
-    count = int(request.args.get("count", 25))
-    params = {
-        "urls": data.urls,
-        "recent": data.get_recent_pages(count),
-    }
-
-    return render_template("index.html", **params)
+def list_projects():
+    projects = data.list_projects()
+    return render_template("projects.html", projects=projects)
 
 
 @app.route("/", methods=["POST"])
-def post():
+def create_project():
+    project = request.form["project"]
+    data.create_project(project)
+    return redirect(f"/{project}")
+
+
+@app.route("/<string:project>/page/<string:page>/delete", methods=["POST"])
+def delete_page(project, page):
+    data.delete_page(project, page)
+    return redirect(f"/{project}")
+
+
+@app.route("/<string:project>")
+def project(project):
+    pages = data.project_pages(project)
+    artifacts = data.project_artifacts(project)
+    generations = data.project_generations(project)
+    return render_template(
+        "project.html",
+        project=project,
+        pages=pages,
+        artifacts=artifacts,
+        generations=generations,
+    )
+
+
+@app.route("/<string:project>", methods=["POST"])
+def project_post(project):
+    kind = request.form["kind"]
+    if kind == "page":
+        page = request.form["page"]
+        data.project_create_page(project, page)
+        return redirect(f"/{project}")
+
+    abort(400)
+
+
+@app.route("/<string:project>/page/<string:page>", methods=["POST"])
+def project_page_post(project, page):
     query = request.form["query"]
-    url = request.form["url"]
-    base = request.form.get("base")
     uuid = str(uuid4())
-    generate(uuid, query, url, base)
-    return redirect(f"/pages/{uuid}")
+    url = "https://datasette.simonwillison.net/"
+    base = request.form.get("base")
+
+    data.write(
+        project,
+        uuid,
+        kind="generation",
+        html=open("templates/generating.html").read(),
+        metadata=dict(query=query, page=page, base=base, url=url, uuid=uuid),
+    )
+
+    data.update(project, page, kind="page", metadata={"generation": uuid})
+
+    threading.Thread(target=generator.generate_content, args=(project, uuid)).start()
+
+    return redirect(f"/{project}/page/{page}")
 
 
-@app.route("/pages/<path:uuid>.json")
-def serve_json(uuid):
-    metadata = data.read(uuid, "metadata")
+@app.route("/<string:project>/<string:kind>/<string:id>.json")
+def serve_json(project, kind, id):
+    metadata = data.read(project, id, kind=kind, mode="metadata")
     return jsonify(metadata)
 
 
-@app.route("/pages/<path:uuid>.html")
-def serve_html(uuid):
-    content = data.read(uuid, "html")
+@app.route("/<string:project>/<string:kind>/<string:id>.html")
+def serve_html(project, kind, id):
+    content = data.read(project, id, kind=kind, mode="html")
     if content:
         return Response(content, mimetype="text/html")
 
     abort(404)
 
 
-@app.route("/pages/<path:uuid>")
-def serve_page(uuid):
-    metadata = data.read(uuid, "metadata")
+@app.route("/<string:project>/page/<string:page>")
+def serve_page(project, page):
+    metadata = data.read(project, page, kind="page", mode="metadata")
     if metadata:
-        return render_template("page.html", metadata=metadata, uuid=uuid)
+        generations = data.page_generations(project, page)
+        return render_template("page.html", metadata=metadata, selected_generation=metadata.get("generation"), project=project, generations=generations)
+
+    abort(404)
+
+@app.route("/<string:project>/page/<string:page>/<string:generation>")
+def serve_generation(project, page, generation):
+    metadata = data.read(project, generation, kind="generation", mode="metadata")
+    if metadata:
+        generations = data.page_generations(project, page)
+        return render_template("page.html", metadata=metadata, selected_generation=generation, project=project, generations=generations)
+
+    abort(404)
+
+@app.route("/<string:project>/page/<string:page>/<string:generation>.html")
+def serve_generation_html(project, page, generation):
+    html = data.read(project, generation, kind="generation", mode="html")
+    if html:
+        return Response(html, mimetype="text/html")
 
     abort(404)
 
 
-@app.route("/pages/<path:uuid>", methods=["POST"])
+@app.route("/pages/<string:uuid>", methods=["POST"])
 def regenerate(uuid):
     query = request.form["query"]
     url = request.form["url"]
@@ -61,7 +124,7 @@ def regenerate(uuid):
     return redirect(f"/pages/{uuid}")
 
 
-@app.route("/delete/<path:uuid>", methods=["POST"])
+@app.route("/delete/<string:uuid>", methods=["POST"])
 def delete(uuid):
     data.delete(uuid)
     return redirect("/")

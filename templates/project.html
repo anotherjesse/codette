@@ -1,0 +1,30 @@
+<h2>
+    <a href="/">/</a>
+    {{ project }}
+</h2>
+
+<h2>Pages</h2>
+<ul>
+    {% for page in pages %}
+    <li><a href="/{{ project }}/page/{{ page }}">{{ page }}</a></li>
+    {% endfor %}
+</ul>
+<form method="post">
+    <input type="text" name="page" placeholder="New page">
+    <input type="hidden" name="kind" value="page">
+    <input type="submit" value="Create New Page">
+</form>
+
+<h2>Generations</h2>
+<ul>
+    {% for generation in generations %}
+    <li><a href="/{{ project }}/generation/{{ generation.uuid }}">{{ generation.uuid }}</a></li>
+    {% endfor %}
+</ul>
+
+<h2>Artifacts</h2>
+<ul>
+    {% for artifact in artifacts %}
+    <li><a href="/{{ project }}/{{ artifact }}">{{ artifact }}</a></li>
+    {% endfor %}
+</ul>

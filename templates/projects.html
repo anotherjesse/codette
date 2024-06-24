@@ -1,0 +1,12 @@
+Projects:
+
+<ul>
+    {% for project in projects %}
+        <li><a href="/{{ project }}">{{ project }}</a></li>
+    {% endfor %}
+</ul>
+
+<form action="/" method="post">
+    <input type="text" name="project" placeholder="New project">
+    <input type="submit" value="Create New Project">
+</form>
