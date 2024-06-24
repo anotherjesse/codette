@@ -1,6 +1,3 @@
-import json
-from jinja2 import Environment, FileSystemLoader
-import requests
 from claudette import Chat
 import data
 import traceback

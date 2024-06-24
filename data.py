@@ -12,7 +12,7 @@ def create_project(project):
     os.makedirs(f"projects/{project}", exist_ok=True)
     os.makedirs(f"projects/{project}/pages", exist_ok=True)
     os.makedirs(f"projects/{project}/generations", exist_ok=True)
-    os.makedirs(f"projects/{project}/artifacts", exist_ok=True)
+    os.makedirs(f"projects/{project}/resources", exist_ok=True)
 
 
 def list_projects():
@@ -40,10 +40,10 @@ def project_pages(project):
     ]
 
 
-def project_artifacts(project):
+def project_resources(project):
     return [
-        f.replace(".json", "")
-        for f in os.listdir(f"projects/{project}/artifacts")
+        read(project, f.replace(".json", ""), kind="resource", mode="metadata")
+        for f in os.listdir(f"projects/{project}/resources")
         if f.endswith(".json")
     ]
 

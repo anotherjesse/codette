@@ -28,7 +28,8 @@
         {% for generation in generations %}
         <tr>
             <td><a href="/{{ project }}/page/{{ generation.page }}">{{ generation.page }}</a></td>
-            <td><a href="/{{ project }}/page/{{ generation.page }}/{{ generation.uuid }}">{{ generation.query }}</a></td>
+            <td><a href="/{{ project }}/page/{{ generation.page }}/{{ generation.uuid }}">{{ generation.query }}</a>
+            </td>
             <td>{{ generation.created }}</td>
         </tr>
         {% endfor %}
@@ -37,8 +38,28 @@
 </ul>
 
 <h2>Resources</h2>
-<ul>
-    {% for artifact in artifacts %}
-    <li><a href="/{{ project }}/{{ artifact }}">{{ artifact }}</a></li>
-    {% endfor %}
-</ul>
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>User</th>
+            <th>Assistant</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for resource in resources %}
+        <tr>
+            <td>{{ resource.name }}</td>
+            <td><textarea rows="4" cols="50" readonly>{{ resource.user }}</textarea></td>
+            <td><textarea rows="4" cols="50" readonly>{{ resource.assistant }}</textarea></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<form method="post">
+    <input type="text" name="url" placeholder="Datasette URL">
+    <input type="text" name="name" placeholder="Resource Name">
+    <input type="hidden" name="kind" value="datasette">
+    <input type="submit" value="Generate Datasette Docs">
+</form>

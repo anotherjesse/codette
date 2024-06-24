@@ -5,6 +5,7 @@ from uuid import uuid4
 import data
 import generator
 import prefix
+import resources
 
 app = Flask(__name__)
 
@@ -30,14 +31,14 @@ def delete_page(project, page):
 @app.route("/<string:project>")
 def project(project):
     pages = data.project_pages(project)
-    artifacts = data.project_artifacts(project)
+    resources = data.project_resources(project)
     generations = data.project_generations(project)
     return render_template(
         "project.html",
         project=project,
         pages=pages,
-        artifacts=artifacts,
         generations=generations,
+        resources=resources,
     )
 
 
@@ -48,6 +49,23 @@ def project_post(project):
         page = request.form["page"]
         data.project_create_page(project, page)
         return redirect(f"/{project}/page/{page}")
+    if kind == "datasette":
+        url = request.form["url"]
+        name = request.form["name"]
+        info = resources.generate_datasette_doc(url)
+        data.write(
+            project,
+            name,
+            kind="resource",
+            metadata=dict(
+                url=url,
+                name=name,
+                created=datetime.now().isoformat(),
+                kind="datasette",
+                **info,
+            ),
+        )
+        return redirect(f"/{project}")
 
     abort(4000)
 
