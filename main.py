@@ -1,4 +1,5 @@
 from flask import Flask, request, redirect, render_template, jsonify, Response, abort
+from datetime import datetime
 import threading
 from uuid import uuid4
 import data
@@ -63,7 +64,7 @@ def project_page_post(project, page):
         uuid,
         kind="generation",
         html=open("templates/generating.html").read(),
-        metadata=dict(query=query, page=page, base=base, url=url, uuid=uuid),
+        metadata=dict(query=query, page=page, base=base, url=url, uuid=uuid, created=datetime.now().isoformat()),
     )
 
     data.update(project, page, kind="page", metadata={"generation": uuid})
@@ -93,7 +94,7 @@ def serve_page(project, page):
     metadata = data.read(project, page, kind="page", mode="metadata")
     if metadata:
         generations = data.page_generations(project, page)
-        return render_template("page.html", metadata=metadata, selected_generation=metadata.get("generation"), project=project, generations=generations)
+        return render_template("page.html", metadata=metadata, page=page, selected_generation=metadata.get("generation"), project=project, generations=generations)
 
     abort(404)
 
@@ -102,7 +103,7 @@ def serve_generation(project, page, generation):
     metadata = data.read(project, generation, kind="generation", mode="metadata")
     if metadata:
         generations = data.page_generations(project, page)
-        return render_template("page.html", metadata=metadata, selected_generation=generation, project=project, generations=generations)
+        return render_template("page.html", metadata=metadata, page=page, selected_generation=generation, project=project, generations=generations)
 
     abort(404)
 

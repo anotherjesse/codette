@@ -8,16 +8,23 @@ urls = [
 ]
 
 
+def create_project(project):
+    os.makedirs(f"projects/{project}", exist_ok=True)
+    os.makedirs(f"projects/{project}/pages", exist_ok=True)
+    os.makedirs(f"projects/{project}/generations", exist_ok=True)
+    os.makedirs(f"projects/{project}/artifacts", exist_ok=True)
+
+
 def list_projects():
     return os.listdir("projects")
 
 
 def delete_page(project, page):
-    rm(f"projects/{project}/pages/{page}.json", no_error=False)
+    rm(f"projects/{project}/pages/{page}.json")
     rm(f"projects/{project}/pages/{page}.html")
     for generation in project_generations(project):
         metadata = read(project, generation, kind="generation", mode="metadata")
-        if metadata.get("page") == page:
+        if metadata and metadata.get("page") == page:
             rm(f"projects/{project}/generations/{generation}.html")
             rm(f"projects/{project}/generations/{generation}.json")
 

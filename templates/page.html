@@ -85,7 +85,7 @@
             <input type='hidden' name='page' value='{{ metadata.page }}' />
             <input type='hidden' name='url' value='{{ metadata.url }}' />
             <button type='submit' onclick="handleSubmit(event)">Regenerate</button>
-            <button type='submit' formaction='/{{ project }}/page/{{ id }}/delete' formmethod='post'>Delete</button>
+            <button type='submit' formaction='/{{ project }}/page/{{ page }}/delete' formmethod='post'>Delete</button>
         </form>
         <ul>
             <select id="generationSelect" onchange="switchGeneration()">
