@@ -30,6 +30,52 @@
             border: none;
             margin-top: 60px;
         }
+
+        #toast {
+            display: none;
+            min-width: 250px;
+            background-color: #c98484;
+            color: #fff;
+            text-align: left;
+            padding: 8px;
+            position: fixed;
+            z-index: 1;
+            left: 8px;
+            bottom: 8px;
+            font-size: 14px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #toast.show {
+            display: block;
+        }
+
+        #toast-content {
+            margin-right: 10px;
+        }
+
+        button {
+            padding: 5px 10px;
+
+        }
+
+        .toast-button {
+            background-color: transparent;
+            border: 1px solid #ffffff63;
+            color: #fff;
+            background-color: #c24747;
+
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .dismiss {
+            background-color: #c2474755;
+        }
+
+        .toast-button:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
     </style>
     <script>
         function handleSubmit(event, action) {
@@ -54,8 +100,7 @@
             }
         }
 
-        function updateFavicon() {
-            const iframe = document.querySelector('iframe');
+        function updateFavicon(iframe) {
             const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
             link.type = 'image/x-icon';
             link.rel = 'shortcut icon';
@@ -69,6 +114,58 @@
             }
             document.head.appendChild(link);
         }
+
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            const toastContent = document.getElementById("toast-content");
+            toastContent.textContent = message;
+            toast.classList.add("show");
+        }
+
+        function closeToast() {
+            const toast = document.getElementById("toast");
+            toast.classList.remove("show");
+        }
+
+        function fixError() {
+            let formText = document.getElementById('form-text');
+            let toastContent = document.getElementById('toast-content');
+            let submitButton = document.getElementById('iterate-button');
+            formText.value = "Fix this error: " + toastContent.textContent;
+            submitButton.click();
+            closeToast();
+        }
+
+        function switchGeneration() {
+            const select = document.getElementById('generationSelect');
+            const selectedGenerationId = select.value;
+            const currentUrl = window.location.pathname;
+            const projectAndPageId = currentUrl.split('/').slice(1, 4).join('/');
+            window.location.href = `/${projectAndPageId}/${selectedGenerationId}`;
+        }
+
+        function attachErrors(ref) {
+            let iframe = ref || document.getElementById('content-frame');
+            console.log({ iframe });
+
+            function attachErrorListener() {
+                const iframeWindow = iframe.contentWindow;
+
+                if (iframeWindow) {
+                    iframeWindow.addEventListener('error', (event) => {
+                        console.error('Error in iframe:', event);
+                        showToast(event.message);
+                    }, true);
+                }
+            }
+
+            iframe.addEventListener('load', attachErrorListener);
+            attachErrorListener();
+
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('generationSelect').addEventListener('change', switchGeneration);
+        });
     </script>
 </head>
 
@@ -77,39 +174,42 @@
         <form method='post' action="/{{ project }}/page/{{ page }}">
             <a href="/">/</a>
             <a href='/{{ project }}'>{{ project }}</a>
-            <input type='text' name='query' value='{{ metadata.query }}' style="width: 60%; padding: 5px;" />
+            <input type='text' id="form-text" name='query' value='{{ metadata.query }}'
+                style="width: 60%; padding: 5px;" />
             <input type='hidden' name='kind' value='page' />
             {% if selected_generation %}
             <input type='hidden' name='base' value='{{ selected_generation }}' />
             {% endif %}
             <input type='hidden' name='page' value='{{ metadata.page }}' />
             <input type='hidden' name='url' value='{{ metadata.url }}' />
-            <button type='submit' onclick="handleSubmit(event)">iterate</button>
+            <button type='submit' onclick="handleSubmit(event)" id="iterate-button">iterate</button>
             <button type='submit' formaction='/{{ project }}/page/{{ page }}/delete' formmethod='post'>Delete</button>
         </form>
         <ul>
-            <select id="generationSelect" onchange="switchGeneration()">
+            <select id="generationSelect">
                 {% for generation in generations %}
-                <option value="{{ generation.uuid }}" {% if generation.uuid == selected_generation %}selected{% endif %}>{{ generation.query }}</option>
+                <option value="{{ generation.uuid }}" {% if generation.uuid==selected_generation %}selected{% endif %}>
+                    {{ generation.query }}</option>
                 {% endfor %}
             </select> | <a href="/{{ project }}/page/{{ page }}/history">History</a>
         </ul>
     </header>
-    <script>
-        function switchGeneration() {
-            const select = document.getElementById('generationSelect');
-            const selectedGenerationId = select.value;
-            const currentUrl = window.location.pathname;
-            const projectAndPageId = currentUrl.split('/').slice(1, 4).join('/');
-            window.location.href = `/${projectAndPageId}/${selectedGenerationId}`;
-        }
-    </script>
+
     {% if selected_generation %}
-    <iframe src="/{{ project }}/generation/{{ selected_generation }}.html" onload="updateFavicon()"></iframe>
+    <iframe id="content-frame" src="/{{ project }}/generation/{{ selected_generation }}.html"
+        onload="updateFavicon(this)"></iframe>
+    <script>
+        attachErrors();
+    </script>
     {% else %}
     <div id="generating">No page yet... showing on project/generation/id pages is broken ... and weird... probably needs
         separate templates?</div>
     {% endif %}
+    <div id="toast">
+        <span id="toast-content"></span>
+        <button class="toast-button dismiss" onclick="closeToast()">Dismiss</button>
+        <button class="toast-button" onclick="fixError()">Fix Error</button>
+    </div>
 </body>
 
 </html>
