@@ -74,17 +74,17 @@
 
 <body>
     <header>
-        <form method='post'>
+        <form method='post' action="/{{ project }}/page/{{ page }}">
             <a href="/">/</a>
             <a href='/{{ project }}'>{{ project }}</a>
             <input type='text' name='query' value='{{ metadata.query }}' style="width: 60%; padding: 5px;" />
             <input type='hidden' name='kind' value='page' />
-            {% if metadata.generation %}
-            <input type='hidden' name='base' value='{{ metadata.generation }}' />
+            {% if selected_generation %}
+            <input type='hidden' name='base' value='{{ selected_generation }}' />
             {% endif %}
             <input type='hidden' name='page' value='{{ metadata.page }}' />
             <input type='hidden' name='url' value='{{ metadata.url }}' />
-            <button type='submit' onclick="handleSubmit(event)">Regenerate</button>
+            <button type='submit' onclick="handleSubmit(event)">iterate</button>
             <button type='submit' formaction='/{{ project }}/page/{{ page }}/delete' formmethod='post'>Delete</button>
         </form>
         <ul>

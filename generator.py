@@ -19,14 +19,7 @@ def generate_content(project, uuid):
         model = "claude-3-5-sonnet-20240620"
         prefill = """<html>"""
 
-        env = Environment(loader=FileSystemLoader("templates"))
-        template = env.get_template("context.jinja2")
-
-        system_prompt = template.render(
-            url=metadata["url"],
-            docs=docs,
-            schema=json.dumps(schema, indent=2),
-        )
+        system_prompt = """You are an expert web developer, you are tasked with producing a single html files.  All of your code should be inline in the html file, but you can use CDNs to import packages if needed."""
 
         messages = list(load_previous(project, metadata.get("base"), count=4))
         messages.append(metadata.get("query"))
