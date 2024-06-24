@@ -16,13 +16,27 @@
 </form>
 
 <h2>Generations</h2>
-<ul>
-    {% for generation in generations %}
-    <li><a href="/{{ project }}/generation/{{ generation.uuid }}">{{ generation.uuid }}</a></li>
-    {% endfor %}
+<table>
+    <thead>
+        <tr>
+            <th>Page</th>
+            <th>Query</th>
+            <th>Creation Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for generation in generations %}
+        <tr>
+            <td><a href="/{{ project }}/page/{{ generation.page }}">{{ generation.page }}</a></td>
+            <td><a href="/{{ project }}/page/{{ generation.page }}/{{ generation.uuid }}">{{ generation.query }}</a></td>
+            <td>{{ generation.created }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
 </ul>
 
-<h2>Artifacts</h2>
+<h2>Resources</h2>
 <ul>
     {% for artifact in artifacts %}
     <li><a href="/{{ project }}/{{ artifact }}">{{ artifact }}</a></li>

@@ -16,7 +16,10 @@ def create_project(project):
 
 
 def list_projects():
-    return os.listdir("projects")
+    return [
+        f for f in os.listdir("projects")
+        if os.path.isdir(os.path.join("projects", f))
+    ]
 
 
 def delete_page(project, page):
@@ -46,11 +49,12 @@ def project_artifacts(project):
 
 
 def project_generations(project):
-    return [
+    gens = [
         load_generation(project, f.replace(".json", ""))
         for f in os.listdir(f"projects/{project}/generations")
         if f.endswith(".json")
     ]
+    return sorted(gens, key=lambda x: x.get("created"), reverse=True)
 
 def page_generations(project, page):
     return [

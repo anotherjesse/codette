@@ -47,9 +47,9 @@ def project_post(project):
     if kind == "page":
         page = request.form["page"]
         data.project_create_page(project, page)
-        return redirect(f"/{project}")
+        return redirect(f"/{project}/page/{page}")
 
-    abort(400)
+    abort(4000)
 
 
 @app.route("/<string:project>/page/<string:page>", methods=["POST"])
@@ -98,6 +98,17 @@ def serve_page(project, page):
 
     abort(404)
 
+
+@app.route("/<string:project>/page/<string:page>/history")
+def serve_history(project, page):
+    metadata = data.read(project, page, kind="page", mode="metadata")
+    generations = data.page_generations(project, page)
+    if generations:
+        return render_template("history.html", generations=generations, project=project, metadata=metadata, page=page)
+
+    abort(404)
+
+
 @app.route("/<string:project>/page/<string:page>/<string:generation>")
 def serve_generation(project, page, generation):
     metadata = data.read(project, generation, kind="generation", mode="metadata")
@@ -115,6 +126,10 @@ def serve_generation_html(project, page, generation):
 
     abort(404)
 
+@app.route("/<string:project>/page/<string:page>/<string:generation>.json")
+def serve_generation_json(project, page, generation):
+    metadata = data.read(project, generation, kind="generation", mode="metadata")
+    return jsonify(metadata)
 
 @app.route("/pages/<string:uuid>", methods=["POST"])
 def regenerate(uuid):
