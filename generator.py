@@ -6,16 +6,10 @@ import data
 import traceback
 
 
-def get_datasette_schema(url):
-    url += ".json"
-    return requests.get(url).json()
-
 
 def generate_content(project, uuid):
     try:
         metadata = data.read(project, uuid, kind="generation", mode="metadata")
-        schema = get_datasette_schema(metadata["url"])
-        docs = open("json.rst").read()
         model = "claude-3-5-sonnet-20240620"
         prefill = """<html>"""
 
@@ -31,7 +25,6 @@ def generate_content(project, uuid):
 
         metadata = {
             "messages": messages,
-            "schema": schema,
             "result": html,
             "model": model,
             "system_prompt": system_prompt,
