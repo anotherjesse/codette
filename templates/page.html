@@ -115,10 +115,11 @@
             document.head.appendChild(link);
         }
 
-        function showToast(message) {
+        function showToast(message, stack) {
             const toast = document.getElementById("toast");
             const toastContent = document.getElementById("toast-content");
             toastContent.textContent = message;
+            toastContent.dataset.stack = stack;
             toast.classList.add("show");
         }
 
@@ -131,7 +132,11 @@
             let formText = document.getElementById('form-text');
             let toastContent = document.getElementById('toast-content');
             let submitButton = document.getElementById('iterate-button');
-            formText.value = "Fix this error: " + toastContent.textContent;
+            let request = "fix this error: " + toastContent.textContent;
+            if (toastContent.dataset.stack) {
+                request += "\stack:" + toastContent.dataset.stack;
+            }
+            formText.value = request;
             submitButton.click();
             closeToast();
         }
@@ -154,7 +159,7 @@
                 if (iframeWindow) {
                     iframeWindow.addEventListener('error', (event) => {
                         console.error('Error in iframe:', event);
-                        showToast(event.message);
+                        showToast(event.message, event.error.stack);
                     }, true);
                 }
             }
