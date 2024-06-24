@@ -12,8 +12,14 @@ def generate_content(project, uuid):
 
         system_prompt = """You are an expert web developer, you are tasked with producing a single html files.  All of your code should be inline in the html file, but you can use CDNs to import packages if needed."""
 
-        messages = list(load_previous(project, metadata.get("base"), count=4))
-        messages.append(metadata.get("query"))
+        messages = []
+
+        for resource in data.project_resources(project):
+            messages.append(resource["user"])
+            messages.append(resource["assistant"])
+
+        for message in load_previous(project, metadata.get("base"), count=4):
+            messages.append(message)
 
         chat = Chat(model, sp=system_prompt)
         r = chat(messages, prefill=prefill)
