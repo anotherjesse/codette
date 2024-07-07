@@ -69,6 +69,16 @@ def load_generation(project, uuid):
         update(project, uuid, kind="generation", metadata=metadata)
     return metadata
 
+def project_files(project):
+    files_dir = f"projects/{project}/files"
+    if not os.path.exists(files_dir):
+        return []
+    return [
+        read(project, f[:-5] if f.endswith('.json') else f, kind="file", mode="metadata")
+        for f in os.listdir(files_dir)
+        if f.endswith(".json")
+    ]
+
 
 
 def project_create_page(project, page):
@@ -82,7 +92,12 @@ def update(project, id, kind="page", html=None, metadata=None):
 
 
 def write(project, id, kind="page", html=None, metadata=None):
-    base = f"projects/{project}/{kind}s/{id}"
+    if kind == "file":
+        base = f"projects/{project}/files/{id}"
+    else:
+        base = f"projects/{project}/{kind}s/{id}"
+    os.makedirs(os.path.dirname(base), exist_ok=True)
+    
     if html:
         filename = f"{base}.html"
         with open(filename, "w") as f:

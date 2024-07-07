@@ -8,7 +8,7 @@ def generate_content(project, uuid):
     try:
         metadata = data.read(project, uuid, kind="generation", mode="metadata")
         model = "claude-3-5-sonnet-20240620"
-        prefill = """<html>"""
+        prefill = """<!DOCTYPE html>\n<html lang="en">"""
 
         system_prompt = """You are an expert web developer, you are tasked with producing a single html files.  All of your code should be inline in the html file, but you can use CDNs to import packages if needed."""
 
@@ -20,6 +20,8 @@ def generate_content(project, uuid):
 
         for message in load_previous(project, metadata.get("base"), count=4):
             messages.append(message)
+
+        messages.append(metadata.get("query", "..."))
 
         chat = Chat(model, sp=system_prompt)
         r = chat(messages, prefill=prefill)

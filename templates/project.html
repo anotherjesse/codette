@@ -37,6 +37,30 @@
 </table>
 </ul>
 
+<h2>User Files</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Created</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for file in files %}
+        <tr>
+            <td><a href="/{{ project }}/file/{{ file.name }}">{{ file.name }}</a></td>
+            <td>{{ file.created }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<form method="post" enctype="multipart/form-data">
+    <input type="file" name="file">
+    <input type="hidden" name="kind" value="file">
+    <input type="submit" value="Upload File">
+</form>
+
+
 <h2>Resources</h2>
 <table>
     <thead>

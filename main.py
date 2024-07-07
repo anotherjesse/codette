@@ -1,18 +1,27 @@
-from flask import Flask, request, redirect, render_template, jsonify, Response, abort
-from datetime import datetime
+import os
 import threading
+from datetime import datetime
 from uuid import uuid4
+
+from flask import Flask, Response, abort, jsonify, redirect, render_template, request, send_file
+from werkzeug.utils import secure_filename
+
 import data
 import generator
 import prefix
 import resources
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'uploads'  # Define the upload folder
 
 @app.route("/")
 def list_projects():
     projects = data.list_projects()
     return render_template("projects.html", projects=projects)
+
+@app.route("/favicon.ico")
+def favicon():
+    abort(404)
 
 
 @app.route("/", methods=["POST"])
@@ -33,12 +42,14 @@ def project(project):
     pages = data.project_pages(project)
     resources = data.project_resources(project)
     generations = data.project_generations(project)
+    files = data.project_files(project)
     return render_template(
         "project.html",
         project=project,
         pages=pages,
         generations=generations,
         resources=resources,
+        files=files
     )
 
 
@@ -66,8 +77,31 @@ def project_post(project):
             ),
         )
         return redirect(f"/{project}")
+    elif kind == "file":
+        if 'file' not in request.files:
+            abort(400, description="No file part")
+        file = request.files['file']
+        if file.filename == '':
+            abort(400, description="No selected file")
+        if file:
+            filename = secure_filename(file.filename)
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], project, filename)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            file.save(file_path)
+            data.write(
+                project,
+                filename,
+                kind="file",
+                metadata=dict(
+                    name=filename,
+                    created=datetime.now().isoformat(),
+                    kind="file",
+                    path=file_path,
+                ),
+            )
+            return redirect(f"/{project}")
 
-    abort(4000)
+    abort(400)
 
 
 @app.route("/<string:project>/page/<string:page>", methods=["POST"])
@@ -177,6 +211,14 @@ def serve_generation_html(project, page, generation):
 def serve_generation_json(project, page, generation):
     metadata = data.read(project, generation, kind="generation", mode="metadata")
     return jsonify(metadata)
+
+
+@app.route("/<string:project>/file/<string:filename>")
+def serve_file(project, filename):
+    metadata = data.read(project, filename, kind="file", mode="metadata")
+    if metadata and 'path' in metadata:
+        return send_file(metadata['path'])
+    abort(404)
 
 
 @app.route("/pages/<string:uuid>", methods=["POST"])
