@@ -3,7 +3,16 @@ import threading
 from datetime import datetime
 from uuid import uuid4
 
-from flask import Flask, Response, abort, jsonify, redirect, render_template, request, send_file
+from flask import (
+    Flask,
+    Response,
+    abort,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+)
 from werkzeug.utils import secure_filename
 
 import data
@@ -12,33 +21,56 @@ import prefix
 import resources
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'  # Define the upload folder
+app.config["UPLOAD_FOLDER"] = "uploads"  # Define the upload folder
 
-@app.route("/")
+# Determine if we're in development or production
+is_development = os.environ.get('FLASK_ENV') == 'development'
+
+if is_development:
+    app.config["SERVER_NAME"] = "localtest.me:8000"
+    app.config["PREFERRED_URL_SCHEME"] = "http"
+else:
+    app.config["SERVER_NAME"] = "zomg.ai"
+    app.config["PREFERRED_URL_SCHEME"] = "https"
+
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def catch_all(path):
+    if is_development and request.host.startswith("localtest.me:"):
+        return redirect(f"http://admin.localtest.me:8000/{path}", code=301)
+    elif not is_development and request.host == "zomg.ai":
+        return redirect(f"https://admin.zomg.ai/{path}", code=301)
+    abort(404)
+
+
+@app.route("/", subdomain="admin")
 def list_projects():
     projects = data.list_projects()
     return render_template("projects.html", projects=projects)
 
-@app.route("/favicon.ico")
-def favicon():
+
+@app.route("/favicon.ico", subdomain="<project>")
+def favicon(project):
     abort(404)
 
 
-@app.route("/", methods=["POST"])
+@app.route("/", methods=["POST"], subdomain="admin")
 def create_project():
     project = request.form["project"]
     data.create_project(project)
     return redirect(f"/{project}")
 
 
-@app.route("/<string:project>/page/<string:page>/delete", methods=["POST"])
+@app.route(
+    "/<string:project>/page/<string:page>/delete", methods=["POST"], subdomain="admin"
+)
 def delete_page(project, page):
     data.delete_page(project, page)
     return redirect(f"/{project}")
 
 
-@app.route("/<string:project>")
-def project(project):
+@app.route("/<string:project>", subdomain="admin")
+def serve_project(project):
     pages = data.project_pages(project)
     resources = data.project_resources(project)
     generations = data.project_generations(project)
@@ -49,11 +81,11 @@ def project(project):
         pages=pages,
         generations=generations,
         resources=resources,
-        files=files
+        files=files,
     )
 
 
-@app.route("/<string:project>", methods=["POST"])
+@app.route("/<string:project>", methods=["POST"], subdomain="admin")
 def project_post(project):
     kind = request.form["kind"]
     if kind == "page":
@@ -78,14 +110,14 @@ def project_post(project):
         )
         return redirect(f"/{project}")
     elif kind == "file":
-        if 'file' not in request.files:
+        if "file" not in request.files:
             abort(400, description="No file part")
-        file = request.files['file']
-        if file.filename == '':
+        file = request.files["file"]
+        if file.filename == "":
             abort(400, description="No selected file")
         if file:
             filename = secure_filename(file.filename)
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], project, filename)
+            file_path = os.path.join(app.config["UPLOAD_FOLDER"], project, filename)
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             file.save(file_path)
             data.write(
@@ -104,7 +136,7 @@ def project_post(project):
     abort(400)
 
 
-@app.route("/<string:project>/page/<string:page>", methods=["POST"])
+@app.route("/<string:project>/page/<string:page>", methods=["POST"], subdomain="admin")
 def project_page_post(project, page):
     query = request.form["query"]
     if request.form.get("prefix"):
@@ -133,13 +165,13 @@ def project_page_post(project, page):
     return redirect(f"/{project}/page/{page}")
 
 
-@app.route("/<string:project>/<string:kind>/<string:id>.json")
+@app.route("/<string:project>/<string:kind>/<string:id>.json", subdomain="admin")
 def serve_json(project, kind, id):
     metadata = data.read(project, id, kind=kind, mode="metadata")
     return jsonify(metadata)
 
 
-@app.route("/<string:project>/<string:kind>/<string:id>.html")
+@app.route("/<string:project>/<string:kind>/<string:id>.html", subdomain="admin")
 def serve_html(project, kind, id):
     content = data.read(project, id, kind=kind, mode="html")
     if content:
@@ -148,7 +180,7 @@ def serve_html(project, kind, id):
     abort(404)
 
 
-@app.route("/<string:project>/page/<string:page>")
+@app.route("/<string:project>/page/<string:page>", subdomain="admin")
 def serve_page(project, page):
     metadata = data.read(project, page, kind="page", mode="metadata")
     if metadata:
@@ -165,7 +197,7 @@ def serve_page(project, page):
     abort(404)
 
 
-@app.route("/<string:project>/page/<string:page>/history")
+@app.route("/<string:project>/page/<string:page>/history", subdomain="admin")
 def serve_history(project, page):
     metadata = data.read(project, page, kind="page", mode="metadata")
     generations = data.page_generations(project, page)
@@ -181,7 +213,9 @@ def serve_history(project, page):
     abort(404)
 
 
-@app.route("/<string:project>/page/<string:page>/<string:generation>")
+@app.route(
+    "/<string:project>/page/<string:page>/<string:generation>", subdomain="admin"
+)
 def serve_generation(project, page, generation):
     metadata = data.read(project, generation, kind="generation", mode="metadata")
     if metadata:
@@ -198,7 +232,9 @@ def serve_generation(project, page, generation):
     abort(404)
 
 
-@app.route("/<string:project>/page/<string:page>/<string:generation>.html")
+@app.route(
+    "/<string:project>/page/<string:page>/<string:generation>.html", subdomain="admin"
+)
 def serve_generation_html(project, page, generation):
     html = data.read(project, generation, kind="generation", mode="html")
     if html:
@@ -207,21 +243,23 @@ def serve_generation_html(project, page, generation):
     abort(404)
 
 
-@app.route("/<string:project>/page/<string:page>/<string:generation>.json")
+@app.route(
+    "/<string:project>/page/<string:page>/<string:generation>.json", subdomain="admin"
+)
 def serve_generation_json(project, page, generation):
     metadata = data.read(project, generation, kind="generation", mode="metadata")
     return jsonify(metadata)
 
 
-@app.route("/<string:project>/file/<string:filename>")
+@app.route("/<string:project>/file/<string:filename>", subdomain="admin")
 def serve_file(project, filename):
     metadata = data.read(project, filename, kind="file", mode="metadata")
-    if metadata and 'path' in metadata:
-        return send_file(metadata['path'])
+    if metadata and "path" in metadata:
+        return send_file(metadata["path"])
     abort(404)
 
 
-@app.route("/pages/<string:uuid>", methods=["POST"])
+@app.route("/pages/<string:uuid>", methods=["POST"], subdomain="admin")
 def regenerate(uuid):
     query = request.form["query"]
     url = request.form["url"]
@@ -230,10 +268,47 @@ def regenerate(uuid):
     return redirect(f"/pages/{uuid}")
 
 
-@app.route("/delete/<string:uuid>", methods=["POST"])
+@app.route("/delete/<string:uuid>", methods=["POST"], subdomain="admin")
 def delete(uuid):
     data.delete(uuid)
     return redirect("/")
+
+
+@app.route("/", subdomain="<project>")
+def project_subdomain(project):
+    pages = data.project_pages(project)
+    return (
+        "<ul>"
+        + "".join([f'<li><a href="/{page}">{page}</a></li>' for page in pages])
+        + "</ul>"
+    )
+
+
+@app.route("/<string:page_name>", subdomain="<project>")
+def serve_page_subdomain(project, page_name):
+    metadata = data.read(project, page_name, kind="page", mode="metadata")
+    current_generation = metadata.get("generation")
+    return serve_generation_html(project, page_name, current_generation)
+
+
+@app.route("/<string:page>/<string:generation>", subdomain="<project>")
+def serve_generation_subdomain(project, page, generation):
+    return serve_generation(project, page, generation)
+
+
+@app.route("/<string:page>/<string:generation>.html", subdomain="<project>")
+def serve_generation_html_subdomain(project, page, generation):
+    return serve_generation_html(project, page, generation)
+
+
+@app.route("/<string:page>/<string:generation>.json", subdomain="<project>")
+def serve_generation_json_subdomain(project, page, generation):
+    return serve_generation_json(project, page, generation)
+
+
+@app.route("/file/<string:filename>", subdomain="<project>")
+def serve_file_subdomain(project, filename):
+    return serve_file(project, filename)
 
 
 def generate(uuid, query, url, base=None):
@@ -249,4 +324,4 @@ def generate(uuid, query, url, base=None):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8000, host="0.0.0.0")
+    app.run(debug=is_development, port=8000, host="0.0.0.0")
