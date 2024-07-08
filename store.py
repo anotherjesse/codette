@@ -134,7 +134,7 @@ class ProjectStore:
         with file_path.open("r") as f:
             return f.read()
 
-    def create_page(self, project_name: str, page_name: str, content: str) -> Project:
+    def create_or_update_page(self, project_name: str, page_name: str, content: str) -> Project:
         project = self.load_project(project_name)
         content_hash = self._store_content(content)
         new_page = Page(
@@ -144,7 +144,7 @@ class ProjectStore:
         )
         updated_project = Project(
             name=project.name,
-            pages=project.pages + [new_page],
+            pages=[p for p in project.pages if p.name != page_name] + [new_page],
         )
         self.save_project(updated_project)
         return updated_project

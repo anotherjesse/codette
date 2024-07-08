@@ -10,7 +10,6 @@ from store import ProjectStore
 @pytest.fixture
 def test_client():
     temp_dir = tempfile.mkdtemp()
-    print(f"temp_dir: {temp_dir}")
     project_store = ProjectStore(Path(temp_dir))
     app = create_app(project_store)
     client = TestClient(app)
@@ -66,9 +65,6 @@ def test_adding_pages_to_empty_project(test_client):
     response = test_client.post(
         f"/api/projects/{created_project['name']}/pages", json=page_data
     )
-    print(f"Status Code: {response.status_code}")
-    print(f"Response Content: {response.content}")
-
     assert response.status_code == 201
     updated_project = response.json()
     assert len(updated_project["pages"]) == 1
@@ -104,6 +100,50 @@ def test_create_project_with_pages(test_client):
 
     assert response.status_code == 200
     assert response.content.decode("utf-8") == project_data["pages"][0]["content"]
+
+
+def test_updating_project_page(test_client):
+    project_data = {
+        "name": "project-creation",
+        "pages": [{"name": "index", "content": "This is a new index page"}],
+    }
+
+    response = test_client.post("/api/projects", json=project_data)
+    assert response.status_code == 201
+    created_project = response.json()
+    assert created_project["name"] == "project-creation"
+    assert len(created_project["pages"]) == 1
+    assert "version" in created_project
+
+    response = test_client.get(
+        f"/content/{created_project['name']}_{created_project['version']}/{created_project['pages'][0]['name']}"
+    )
+
+    assert response.status_code == 200
+    assert response.content.decode("utf-8") == project_data["pages"][0]["content"]
+
+    page_data = {
+        "name": "index",
+        "content": "This is an updated index page",
+    }
+
+    response = test_client.post(
+        f"/api/projects/{created_project['name']}/pages", json=page_data
+    )
+    assert response.status_code == 201
+    updated_project = response.json()
+    assert len(updated_project["pages"]) == 1
+    created_page = updated_project["pages"][0]
+    assert created_page["name"] == "index"
+    assert created_page["content_hash"]
+    assert created_page["content"] == None
+
+    response = test_client.get(
+        f"/content/{updated_project['name']}_{updated_project['version']}/{created_page['name']}"
+    )
+
+    assert response.status_code == 200
+    assert response.content.decode("utf-8") == page_data["content"]
 
 
 def test_delete_page(test_client):

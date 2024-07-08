@@ -27,8 +27,8 @@ def create_app(project_store: ProjectStore):
         return project_store.list_project_versions(project_name)
 
     @app.post("/api/projects/{project_name}/pages", status_code=201)
-    def create_page(project_name: str, page: Page):
-        return project_store.create_page(project_name, page.name, page.content)
+    def create_or_update_page(project_name: str, page: Page):
+        return project_store.create_or_update_page(project_name, page.name, page.content)
 
     @app.delete("/api/projects/{project_name}/pages/{page_name}")
     def delete_page(project_name: str, page_name: str):
