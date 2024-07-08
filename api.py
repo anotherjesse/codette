@@ -8,8 +8,16 @@ from starlette.requests import Request as StarletteRequest
 
 
 def create_app(project_store: ProjectStore):
-    api = FastAPI()
+    api = FastAPI(
+        title="Codette API",
+        description="API for managing projects and pages",
+        version="0.0.1",
+    )
     content = FastAPI()
+
+    @api.get("/", include_in_schema=False)
+    async def root():
+        return api.openapi()
 
     @api.get("/v0/projects")
     def list_projects():
@@ -42,7 +50,6 @@ def create_app(project_store: ProjectStore):
 
     @content.get("/{page_name}")
     def serve_page(request: Request, page_name: str):
-        print("page_name", page_name)
         subdomain = request.scope.get("subdomain")
         if "_" in subdomain:
             project_name, version_name = subdomain.split("_")
@@ -50,8 +57,6 @@ def create_app(project_store: ProjectStore):
             project_name = subdomain
             version_name = None
 
-        print("project_name", project_name)
-        print("version_name", version_name)
         project = project_store.load_project(project_name, version_name)
         if project:
             for page in project.pages:
@@ -67,20 +72,12 @@ def create_app(project_store: ProjectStore):
         if scope["type"] == "http":
             request = StarletteRequest(scope, receive)
             host = request.headers.get("host", "")
-            print("host", host)
 
             if host.startswith("api."):
                 await api(scope, receive, send)
             else:
                 subdomain = host.split(".")[0] if "." in host else None
                 scope["subdomain"] = subdomain
-                if "_" in subdomain:
-                    project_name, version_name = subdomain.split("_")
-                else:
-                    project_name = subdomain
-                    version_name = None
-                print("project_name", project_name)
-                print("version_name", version_name)
 
                 await content(scope, receive, send)
         else:
