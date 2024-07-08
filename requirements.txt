@@ -1,5 +1,5 @@
-flask
+fastapi==0.111.0
 claudette @ git+https://github.com/AnswerDotAI/claudette.git
 requests
 toolslm
-gunicorn
+uvicorn==0.30.1

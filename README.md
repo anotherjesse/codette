@@ -4,7 +4,15 @@
 
     pip install -r requirements.txt
     export ANTHROPIC__API_KEY="..."
-    python main.py
+    python serve.py
+
+### unit tests
+
+    pip install -r dev-requirements.txt
+
+Then to run them:
+ 
+    ptw -- -vv
 
 ## next steps
 
