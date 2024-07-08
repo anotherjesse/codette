@@ -1,5 +1,5 @@
 import re
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 from typing import List, Dict, Union, Optional, Any
 import json
 import hashlib
@@ -29,9 +29,9 @@ class Page(BaseModel):
 
     @field_validator("title")
     @classmethod
-    def set_title_if_empty(cls, v: str, values: Dict[str, Any]) -> str:
-        if not v and "name" in values:
-            return values["name"]
+    def set_title_if_empty(cls, v: str, info: ValidationInfo) -> str:
+        if not v and "name" in info.data:
+            return info.data["name"]
         return v
 
 

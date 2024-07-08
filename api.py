@@ -13,7 +13,7 @@ def create_app(project_store: ProjectStore):
 
     @app.post("/api/projects", status_code=201)
     def create_project(project: Project):
-        return project_store.create_project(project.name, [])
+        return project_store.create_project(project.name, [p.model_dump() for p in project.pages])
 
     @app.get("/api/projects/{project_name}")
     def get_project(project_name: str):
