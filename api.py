@@ -1,53 +1,92 @@
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.wsgi import WSGIMiddleware
 from store import ProjectStore, Page, Project
-import json
 from fastapi.responses import HTMLResponse
+from starlette.applications import Starlette
+from starlette.routing import Route, Mount
+from starlette.requests import Request as StarletteRequest
 
 
 def create_app(project_store: ProjectStore):
-    app = FastAPI()
+    api = FastAPI()
+    content = FastAPI()
 
-    @app.get("/api/projects")
+    @api.get("/v0/projects")
     def list_projects():
         return project_store.list_projects()
 
-    @app.post("/api/projects", status_code=201)
+    @api.post("/v0/projects", status_code=201)
     def create_project(project: Project):
-        return project_store.create_project(project.name, [p.model_dump() for p in project.pages])
+        return project_store.create_project(
+            project.name, [p.model_dump() for p in project.pages]
+        )
 
-    @app.get("/api/projects/{project_name}")
+    @api.get("/v0/projects/{project_name}")
     def get_project(project_name: str):
         try:
             return project_store.load_project(project_name)
         except FileNotFoundError as e:
             raise HTTPException(status_code=404, detail=str(e))
 
-    @app.get("/api/projects/{project_name}/versions")
+    @api.get("/v0/projects/{project_name}/versions")
     def list_project_versions(project_name: str):
         return project_store.list_project_versions(project_name)
 
-    @app.post("/api/projects/{project_name}/pages", status_code=201)
+    @api.post("/v0/projects/{project_name}/pages", status_code=201)
     def create_or_update_page(project_name: str, page: Page):
         return project_store.create_or_update_page(project_name, page.name, page.content)
 
-    @app.delete("/api/projects/{project_name}/pages/{page_name}")
+    @api.delete("/v0/projects/{project_name}/pages/{page_name}")
     def delete_page(project_name: str, page_name: str):
         return project_store.delete_page(project_name, page_name)
 
-    @app.get("/favicon.ico", include_in_schema=False)
-    def favicon():
-        raise HTTPException(status_code=404, detail="Favicon not found")
+    @content.get("/{page_name}")
+    def serve_page(request: Request, page_name: str):
+        print("page_name", page_name)
+        subdomain = request.scope.get("subdomain")
+        if "_" in subdomain:
+            project_name, version_name = subdomain.split("_")
+        else:
+            project_name = subdomain
+            version_name = None
 
-    @app.get("/content/{project_version_name}/{page_name}")
-    def serve_page(project_version_name: str, page_name: str):
-        project_name, version_name = project_version_name.split("_")
+        print("project_name", project_name)
+        print("version_name", version_name)
         project = project_store.load_project(project_name, version_name)
         if project:
             for page in project.pages:
                 if page.name == page_name:
-                    content = project_store.load_content(project_name, page.content_hash)
+                    content = project_store.load_content(
+                        project_name, page.content_hash
+                    )
                     return HTMLResponse(content=content)
-        
+
         raise HTTPException(status_code=404, detail="Page not found")
+
+    async def router(scope, receive, send):
+        if scope["type"] == "http":
+            request = StarletteRequest(scope, receive)
+            host = request.headers.get("host", "")
+            print("host", host)
+
+            if host.startswith("api."):
+                await api(scope, receive, send)
+            else:
+                subdomain = host.split(".")[0] if "." in host else None
+                scope["subdomain"] = subdomain
+                if "_" in subdomain:
+                    project_name, version_name = subdomain.split("_")
+                else:
+                    project_name = subdomain
+                    version_name = None
+                print("project_name", project_name)
+                print("version_name", version_name)
+
+                await content(scope, receive, send)
+        else:
+            # Handle other types of requests (e.g., WebSocket)
+            raise NotImplementedError(f"Unsupported scope type: {scope['type']}")
+
+    app = Starlette(routes=[Mount("/", app=router)])
 
     return app
