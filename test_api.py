@@ -13,7 +13,7 @@ def client_builder():
     project_store = ProjectStore(Path(temp_dir))
     app = create_app(project_store)
 
-    def client_builder(subdomain):
+    def client_builder(subdomain='api'):
         return TestClient(app, base_url=f"http://{subdomain}.test")
 
     yield client_builder
@@ -21,7 +21,7 @@ def client_builder():
 
 
 def test_list_projects(client_builder):
-    api_client = client_builder("api")
+    api_client = client_builder()
 
     response = api_client.get("/v0/projects")
     assert response.status_code == 200
@@ -30,14 +30,14 @@ def test_list_projects(client_builder):
 
 
 def test_unknown_project_404s(client_builder):
-    api_client = client_builder("api")
+    api_client = client_builder()
 
     response = api_client.get("/v0/projects/unknown")
     assert response.status_code == 404
 
 
 def test_create_project(client_builder):
-    api_client = client_builder("api")
+    api_client = client_builder()
 
     project_data = {"name": "project-creation"}
 
@@ -56,7 +56,7 @@ def test_create_project(client_builder):
 
 
 def test_only_one_project(client_builder):
-    api_client = client_builder("api")
+    api_client = client_builder()
 
     project_data = {"name": "only-one"}
 
@@ -78,7 +78,7 @@ def test_only_one_project(client_builder):
 
 
 def test_adding_pages_to_empty_project(client_builder):
-    api_client = client_builder("api")
+    api_client = client_builder()
 
     project_data = {
         "name": "pages-creation",
@@ -117,7 +117,7 @@ def test_adding_pages_to_empty_project(client_builder):
 
 
 def test_create_project_with_pages(client_builder):
-    api_client = client_builder("api")
+    api_client = client_builder()
 
     project_data = {
         "name": "project-creation",
@@ -142,7 +142,7 @@ def test_create_project_with_pages(client_builder):
 
 
 def test_updating_project_page(client_builder):
-    api_client = client_builder("api")
+    api_client = client_builder()
 
     project_data = {
         "name": "project-creation",
@@ -191,7 +191,7 @@ def test_updating_project_page(client_builder):
 
 
 def test_delete_page(client_builder):
-    api_client = client_builder("api")
+    api_client = client_builder()
 
     project_data = {
         "name": "project-creation",
@@ -238,7 +238,7 @@ def test_delete_page(client_builder):
 
 
 def test_index_served_at_index(client_builder):
-    api_client = client_builder("api")
+    api_client = client_builder()
 
     project_data = {
         "name": "project-creation",
