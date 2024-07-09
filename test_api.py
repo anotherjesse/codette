@@ -140,6 +140,11 @@ def test_create_project_with_pages(client_builder):
     assert response.status_code == 200
     assert response.content.decode("utf-8") == project_data["pages"][0]["content"]
 
+    response = api_client.get(f"/v0/projects/{created_project['name']}/raw/{created_project['pages'][0]['content_hash']}")
+
+    assert response.status_code == 200
+    assert response.content.decode("utf-8") == project_data["pages"][0]["content"]
+
 
 def test_updating_project_page(client_builder):
     api_client = client_builder()

@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 from starlette.applications import Starlette
 from starlette.routing import Route, Mount
 from starlette.requests import Request as StarletteRequest
+from fastapi.middleware.cors import CORSMiddleware
 
 
 def create_app(project_store: ProjectStore):
@@ -14,6 +15,15 @@ def create_app(project_store: ProjectStore):
         version="0.0.1",
     )
     content = FastAPI()
+
+    # Add CORS middleware to api
+    api.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],  # Allows all methods
+        allow_headers=["*"],  # Allows all headers
+    )
 
     @api.get("/", include_in_schema=False)
     async def root():
@@ -52,6 +62,11 @@ def create_app(project_store: ProjectStore):
     @api.delete("/v0/projects/{project_name}/pages/{page_name}")
     def delete_page(project_name: str, page_name: str):
         return project_store.delete_page(project_name, page_name)
+
+    @api.get("/v0/projects/{project_name}/raw/{page_name}")
+    def get_page_raw(project_name: str, page_name: str):
+        content = project_store.load_content(project_name, page_name)
+        return HTMLResponse(content=content)
 
     @content.get("/{page_name}")
     @content.get("/")
