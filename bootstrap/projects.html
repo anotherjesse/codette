@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Manager</title>
+</head>
+<body>
+    <h1>Project Manager</h1>
+
+    <h2>Create Project</h2>
+    <input type="text" id="projectName" placeholder="Enter project name">
+    <button onclick="createProject()">Create Project</button>
+
+    <h2>Project List</h2>
+    <table id="projectList"></table>
+
+    <script>
+        const API_URL = 'http://api.localtest.me:8000/v0';
+
+        async function listProjects() {
+            try {
+                const response = await fetch(`${API_URL}/projects`);
+                const projects = await response.json();
+                const projectList = document.getElementById('projectList');
+                projectList.innerHTML = '<tr><th>Project</th><th>Edit</th><th>View</th><th>Version</th></tr>';
+                projects.forEach(project => {
+                    const tr = document.createElement('tr');
+                    
+                    const tdName = document.createElement('td');
+                    tdName.textContent = project.name;
+                    tr.appendChild(tdName);
+
+                    const tdEdit = document.createElement('td');
+                    const aEdit = document.createElement('a');
+                    aEdit.href = `/edit?project=${project.name}`;
+                    aEdit.textContent = 'Edit';
+                    tdEdit.appendChild(aEdit);
+                    tr.appendChild(tdEdit);
+
+                    const tdView = document.createElement('td');
+                    const aView = document.createElement('a');
+                    aView.href = `http://${project.name}.localtest.me:8000/`;
+                    aView.textContent = project.name;
+                    tdView.appendChild(aView);
+                    tr.appendChild(tdView);
+
+                    const tdVersion = document.createElement('td');
+                    const aVersion = document.createElement('a');
+                    aVersion.href = `http://${project.name}_${project.version}.localtest.me:8000/`;
+                    aVersion.textContent = project.version;
+                    tdVersion.appendChild(aVersion);
+                    tr.appendChild(tdVersion);
+
+                    projectList.appendChild(tr);
+                });
+            } catch (error) {
+                console.error('Error listing projects:', error);
+            }
+        }
+
+        async function createProject() {
+            const projectName = document.getElementById('projectName').value;
+            if (!projectName) {
+                alert('Please enter a project name');
+                return;
+            }
+            try {
+                const response = await fetch(`${API_URL}/projects`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name: projectName, pages: [] }),
+                });
+                if (response.ok) {
+                    alert('Project created successfully');
+                    document.getElementById('projectName').value = '';
+                    listProjects();
+                } else {
+                    alert('Failed to create project');
+                }
+            } catch (error) {
+                console.error('Error creating project:', error);
+                alert('Error creating project');
+            }
+        }
+
+        // Initial project list load
+        listProjects();
+    </script>
+</body>
+</html>

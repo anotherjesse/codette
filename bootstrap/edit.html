@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Project</title>
+</head>
+<body>
+    <h1>Edit Project: <span id="projectName"></span></h1>
+
+    <div>
+        <input type="text" id="pageName" placeholder="Enter page name">
+        <button onclick="loadPage()">Load Page</button>
+        <button onclick="savePage()">Save Page</button>
+    </div>
+
+    <div id="pageList"></div>
+
+    <textarea id="pageContent" rows="20" cols="80"></textarea>
+
+    <script>
+        const API_URL = 'http://api.localtest.me:8000/v0';
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectName = urlParams.get('project');
+
+        document.getElementById('projectName').textContent = projectName;
+
+        // Add this new function to load and display the page list
+        async function loadPageList() {
+            try {
+                const response = await fetch(`${API_URL}/projects/${projectName}`);
+                if (!response.ok) {
+                    throw new Error('Failed to load project');
+                }
+                const project = await response.json();
+
+                const pageListElement = document.getElementById('pageList');
+                pageListElement.innerHTML = '<h3>Pages:</h3>';
+                const ul = document.createElement('ul');
+                project.pages.forEach(page => {
+                    const li = document.createElement('li');
+                    const a = document.createElement('a');
+                    a.href = '#';
+                    a.textContent = page.name;
+                    a.onclick = (e) => {
+                        e.preventDefault();
+                        document.getElementById('pageName').value = page.name;
+                        loadPage();
+                    };
+                    li.appendChild(a);
+                    ul.appendChild(li);
+                });
+                pageListElement.appendChild(ul);
+            } catch (error) {
+                console.error('Error loading page list:', error);
+                alert('Error loading page list');
+            }
+        }
+
+        // Call loadPageList when the page loads
+        loadPageList();
+
+        // Modify the loadPage function to refresh the page list after loading
+        async function loadPage() {
+            const pageName = document.getElementById('pageName').value;
+            if (!pageName) {
+                alert('Please enter a page name');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/projects/${projectName}`);
+                if (!response.ok) {
+                    throw new Error('Failed to load project');
+                }
+                const project = await response.json();
+                
+                const page = project.pages.find(p => p.name === pageName);
+                if (page) {
+                    const contentResponse = await fetch(`${API_URL}/projects/${projectName}/raw/${page.content_hash}`);
+                    if (!contentResponse.ok) {
+                        throw new Error('Failed to load page content');
+                    }
+                    const content = await contentResponse.text();
+                    document.getElementById('pageContent').value = content;
+                } else {
+                    document.getElementById('pageContent').value = '';
+                    document.getElementById('pageContent').placeholder = 'New page - type new content here'
+                }
+            } catch (error) {
+                console.error('Error loading page:', error);
+                alert('Error loading page');
+            }
+
+            // Add this line at the end of the function
+            await loadPageList();
+        }
+
+        // Modify the savePage function to refresh the page list after saving
+        async function savePage() {
+            const pageName = document.getElementById('pageName').value;
+            const pageContent = document.getElementById('pageContent').value;
+
+            if (!pageName) {
+                alert('Please enter a page name');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/projects/${projectName}/pages`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name: pageName, content: pageContent }),
+                });
+
+                if (response.ok) {
+                    alert('Page saved successfully');
+                    await loadPageList();
+                } else {
+                    throw new Error('Failed to save page');
+                }
+            } catch (error) {
+                console.error('Error saving page:', error);
+                alert('Error saving page');
+            }
+        }
+    </script>
+</body>
+</html>
