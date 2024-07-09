@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Project</title>
 </head>
+
 <body>
     <h1>Edit Project: <span id="projectName"></span></h1>
 
@@ -12,6 +14,7 @@
         <input type="text" id="pageName" placeholder="Enter page name">
         <button onclick="loadPage()">Load Page</button>
         <button onclick="savePage()">Save Page</button>
+        <button onclick="generatePage()">Generate</button>
     </div>
 
     <div id="pageList"></div>
@@ -74,7 +77,7 @@
                     throw new Error('Failed to load project');
                 }
                 const project = await response.json();
-                
+
                 const page = project.pages.find(p => p.name === pageName);
                 if (page) {
                     const contentResponse = await fetch(`${API_URL}/projects/${projectName}/raw/${page.content_hash}`);
@@ -126,6 +129,39 @@
                 alert('Error saving page');
             }
         }
+
+        async function generatePage() {
+            const pageName = document.getElementById('pageName').value;
+            const pageContent = document.getElementById('pageContent').value;
+
+            if (!pageName) {
+                alert('Please enter a page name');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/projects/${projectName}/pages/${pageName}/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt: pageContent }),
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    document.getElementById('pageContent').value = result.content;
+                    alert('Page generated successfully');
+                    await loadPageList();
+                } else {
+                    throw new Error('Failed to generate page');
+                }
+            } catch (error) {
+                console.error('Error generating page:', error);
+                alert('Error generating page');
+            }
+        }
     </script>
 </body>
+
 </html>

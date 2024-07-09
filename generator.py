@@ -1,68 +1,56 @@
+import json
+import os
+import hashlib
+from functools import wraps
 from claudette import Chat
-import data
 import traceback
 
 
+def disk_cache(cache_dir=".llm_cache"):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Create a unique key based on function arguments
+            key = hashlib.md5(
+                json.dumps((args, kwargs), sort_keys=True).encode()
+            ).hexdigest()
+            cache_file = os.path.join(cache_dir, f"{func.__name__}_{key}.json")
 
-def generate_content(project, uuid):
+            force_refresh = kwargs.get("force_refresh", False)
+
+            if os.path.exists(cache_file) and not force_refresh:
+                with open(cache_file, "r") as f:
+                    return json.load(f)
+
+            result = func(*args, **kwargs)
+            os.makedirs(cache_dir, exist_ok=True)
+            with open(cache_file, "w") as f:
+                json.dump(result, f)
+
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+@disk_cache()
+def generate_content(
+    messages,
+    model="claude-3-5-sonnet-20240620",
+    prefill='<!DOCTYPE html>\n<html lang="en">',
+    system_prompt="""You are an expert web developer, you are tasked with producing a single html files.  All of your code should be inline in the html file, but you can use CDNs to import packages if needed.""",
+    force_refresh=False,
+):
     try:
-        metadata = data.read(project, uuid, kind="generation", mode="metadata")
-        model = "claude-3-5-sonnet-20240620"
-        prefill = """<!DOCTYPE html>\n<html lang="en">"""
-
-        system_prompt = """You are an expert web developer, you are tasked with producing a single html files.  All of your code should be inline in the html file, but you can use CDNs to import packages if needed."""
-
-        messages = []
-
-        for resource in data.project_resources(project):
-            messages.append(resource["user"])
-            messages.append(resource["assistant"])
-
-        for message in load_previous(project, metadata.get("base"), count=4):
-            messages.append(message)
-
-        messages.append(metadata.get("query", "..."))
-
         chat = Chat(model, sp=system_prompt)
         r = chat(messages, prefill=prefill)
 
-        html = parse(r)
-
-        metadata = {
-            "messages": messages,
-            "result": html,
-            "model": model,
-            "system_prompt": system_prompt,
-            "prefill": prefill,
-        }
-
-        data.update(project, uuid, kind="generation", html=html, metadata=metadata)
+        return parse(r)
 
     except Exception as e:
-        error_html = (
-            f"<title>error</title><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>"
-        )
-        data.write(project, uuid, kind="generation", html=error_html)
+        return f"<title>error</title><p>{str(e)}</p><pre>{traceback.format_exc()}</pre>"
 
 
 def parse(r):
     return r.content[0].text
-
-
-def load_previous(project, base, count=4):
-    messages = []
-    for i in range(count):
-        if not base:
-            break
-        metadata = data.read(project, base, kind="generation", mode="metadata")
-        if not metadata:
-            break
-        html = data.read(project, base, kind="generation", mode="html")
-        messages.append({"user": metadata.get("query", ""), "assistant": html})
-        base = metadata.get("base", "")
-
-    messages.reverse()
-
-    for m in messages:
-        yield m["user"]
-        yield m["assistant"]

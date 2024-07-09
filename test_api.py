@@ -13,7 +13,7 @@ def client_builder():
     project_store = ProjectStore(Path(temp_dir))
     app = create_app(project_store)
 
-    def client_builder(subdomain='api'):
+    def client_builder(subdomain="api"):
         return TestClient(app, base_url=f"http://{subdomain}.test")
 
     yield client_builder
@@ -140,7 +140,9 @@ def test_create_project_with_pages(client_builder):
     assert response.status_code == 200
     assert response.content.decode("utf-8") == project_data["pages"][0]["content"]
 
-    response = api_client.get(f"/v0/projects/{created_project['name']}/raw/{created_project['pages'][0]['content_hash']}")
+    response = api_client.get(
+        f"/v0/projects/{created_project['name']}/raw/{created_project['pages'][0]['content_hash']}"
+    )
 
     assert response.status_code == 200
     assert response.content.decode("utf-8") == project_data["pages"][0]["content"]

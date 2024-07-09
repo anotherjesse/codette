@@ -1,5 +1,6 @@
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.middleware.wsgi import WSGIMiddleware
+from fastapi import FastAPI, HTTPException, Request, Body
+from pydantic import BaseModel
+from generator import generate_content
 from store import ProjectStore, Page, Project
 from fastapi.responses import HTMLResponse
 from starlette.applications import Starlette
@@ -59,12 +60,40 @@ def create_app(project_store: ProjectStore):
             project_name, page.name, page.content
         )
 
+    # FIXME(ja): we should be able to send more context here (not just the prompt, but other resources
+    # to include in the context (api docs, other pages, list of static files, ...)
+    class GeneratePageRequest(BaseModel):
+        prompt: str
+
+    @api.post("/v0/projects/{project_name}/pages/{page_name}/generate", status_code=201)
+    def generate_page(
+        project_name: str, page_name: str, request: GeneratePageRequest = Body(...)
+    ):
+        messages = []
+
+        page = project_store.load_page(project_name, page_name)
+        if page:
+            existing_content = project_store.load_content(
+                project_name, page.content_hash
+            )
+            if existing_content:
+                messages.append(f"What is the current page content?")
+                messages.append(existing_content)
+
+        messages.append(request.prompt)
+        content = generate_content(messages)
+
+        # FIXME(ja): we should save more context here ... like the parent or ...
+        return project_store.create_or_update_page(project_name, page_name, content)
+
     @api.delete("/v0/projects/{project_name}/pages/{page_name}")
     def delete_page(project_name: str, page_name: str):
+        # FIXME(ja): we should support mutating versions other than the latest
         return project_store.delete_page(project_name, page_name)
 
     @api.get("/v0/projects/{project_name}/raw/{page_name}")
     def get_page_raw(project_name: str, page_name: str):
+        # FIXME(ja): we should support loading raw content for older versions
         content = project_store.load_content(project_name, page_name)
         return HTMLResponse(content=content)
 
@@ -81,14 +110,10 @@ def create_app(project_store: ProjectStore):
         if not page_name:
             page_name = "index"
 
-        project = project_store.load_project(project_name, version_name)
-        if project:
-            for page in project.pages:
-                if page.name == page_name:
-                    content = project_store.load_content(
-                        project_name, page.content_hash
-                    )
-                    return HTMLResponse(content=content)
+        page = project_store.load_page(project_name, page_name, version=version_name)
+        if page:
+            content = project_store.load_content(project_name, page.content_hash)
+            return HTMLResponse(content=content)
 
         raise HTTPException(status_code=404, detail="Page not found")
 

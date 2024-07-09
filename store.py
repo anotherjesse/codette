@@ -89,6 +89,13 @@ class ProjectStore:
             data = json.load(f)
         return Project.model_validate(data)
 
+    def load_page(self, project_name: str, page_name: str, version: str = None) -> Page:
+        project = self.load_project(project_name, version)
+        for page in project.pages:
+            if page.name == page_name:
+                return page
+        return None
+
     # this is ugly because of the version issue
     def list_projects(self, include_versions=True) -> List[Project]:
         projects = {}
