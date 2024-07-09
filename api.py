@@ -25,9 +25,12 @@ def create_app(project_store: ProjectStore):
 
     @api.post("/v0/projects", status_code=201)
     def create_project(project: Project):
-        return project_store.create_project(
-            project.name, [p.model_dump() for p in project.pages]
-        )
+        try:
+            return project_store.create_project(
+                project.name, [p.model_dump() for p in project.pages]
+            )
+        except FileExistsError as e:
+            raise HTTPException(status_code=409, detail=str(e))
 
     @api.get("/v0/projects/{project_name}")
     def get_project(project_name: str):
@@ -42,7 +45,9 @@ def create_app(project_store: ProjectStore):
 
     @api.post("/v0/projects/{project_name}/pages", status_code=201)
     def create_or_update_page(project_name: str, page: Page):
-        return project_store.create_or_update_page(project_name, page.name, page.content)
+        return project_store.create_or_update_page(
+            project_name, page.name, page.content
+        )
 
     @api.delete("/v0/projects/{project_name}/pages/{page_name}")
     def delete_page(project_name: str, page_name: str):

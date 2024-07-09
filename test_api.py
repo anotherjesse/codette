@@ -55,6 +55,28 @@ def test_create_project(client_builder):
     assert projects[0] == created_project
 
 
+def test_only_one_project(client_builder):
+    api_client = client_builder("api")
+
+    project_data = {"name": "only-one"}
+
+    response = api_client.post("/v0/projects", json=project_data)
+    assert response.status_code == 201
+    created_project = response.json()
+    assert created_project["name"] == "only-one"
+    assert len(created_project["pages"]) == 0
+    assert "version" in created_project
+
+    response = api_client.post("/v0/projects", json=project_data)
+    assert response.status_code == 409
+
+    response = api_client.get("/v0/projects")
+    assert response.status_code == 200
+    projects = response.json()
+    assert len(projects) == 1
+    assert projects[0] == created_project
+
+
 def test_adding_pages_to_empty_project(client_builder):
     api_client = client_builder("api")
 

@@ -109,7 +109,13 @@ class ProjectStore:
                 response.append(v)
         return response
 
+    def exists(self, name: str) -> bool:
+        return len(list(self.base_path.glob(f"{name}_*.json"))) > 0
+
     def create_project(self, name: str, pages: List[Dict]) -> Project:
+        if self.exists(name):
+            raise FileExistsError(f"A project named '{name}' already exists")
+
         processed_pages = []
         for page in pages:
             content_hash = self._store_content(page["content"])
@@ -134,7 +140,9 @@ class ProjectStore:
         with file_path.open("r") as f:
             return f.read()
 
-    def create_or_update_page(self, project_name: str, page_name: str, content: str) -> Project:
+    def create_or_update_page(
+        self, project_name: str, page_name: str, content: str
+    ) -> Project:
         project = self.load_project(project_name)
         content_hash = self._store_content(content)
         new_page = Page(
