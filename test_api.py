@@ -237,5 +237,26 @@ def test_delete_page(client_builder):
     assert len(project_details["pages"]) == 0
 
 
+def test_index_served_at_index(client_builder):
+    api_client = client_builder("api")
+
+    project_data = {
+        "name": "project-creation",
+        "pages": [{"name": "index", "content": "This is a new index page"}],
+    }
+
+    # Create project
+    response = api_client.post("/v0/projects", json=project_data)
+    assert response.status_code == 201
+    created_project = response.json()
+
+    version_client = client_builder(
+        f"{created_project['name']}_{created_project['version']}"
+    )
+    response = version_client.get("/")
+    assert response.status_code == 200
+    assert response.content.decode("utf-8") == project_data["pages"][0]["content"]
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-s"])

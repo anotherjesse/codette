@@ -54,13 +54,17 @@ def create_app(project_store: ProjectStore):
         return project_store.delete_page(project_name, page_name)
 
     @content.get("/{page_name}")
-    def serve_page(request: Request, page_name: str):
+    @content.get("/")
+    def serve_page(request: Request, page_name: str = None):
         subdomain = request.scope.get("subdomain")
         if "_" in subdomain:
             project_name, version_name = subdomain.split("_")
         else:
             project_name = subdomain
             version_name = None
+
+        if not page_name:
+            page_name = "index"
 
         project = project_store.load_project(project_name, version_name)
         if project:
